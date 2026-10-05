@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "patrol-lab/observation.schema.json",
+  "title": "One frame of facts (identical for the oracle and perception paths). Tracks are anonymous: no identity, face, biometric or appearance fields exist.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "t",
+    "source",
+    "tracks",
+    "assets"
+  ],
+  "properties": {
+    "t": {
+      "type": "number",
+      "minimum": 0
+    },
+    "source": {
+      "enum": [
+        "oracle",
+        "perception"
+      ]
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "class",
+          "position"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*_[0-9]{4}$"
+          },
+          "class": {
+            "enum": [
+              "person",
+              "vehicle",
+              "object"
+            ]
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 3
+          },
+          "velocity": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 3
+          },
+          "action": {
+            "enum": [
+              "walking",
+              "running",
+              "standing",
+              "crouching",
+              "lying",
+              "fallen",
+              "climbing",
+              "carrying"
+            ]
+          },
+          "credential": {
+            "enum": [
+              "authorized",
+              "unauthorized",
+              "unknown"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "state"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "gate",
+              "door"
+            ]
+          },
+          "state": {
+            "enum": [
+              "open",
+              "closed",
+              "unknown"
+            ]
+          },
+          "angle_deg": {
+            "type": "number"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "robots": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "patrol-lab/compound.schema.json",
+  "title": "Compound layout: perimeter, gates, buildings, zones, road segments, patrol route",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "perimeter",
+    "zones"
+  ],
+  "$defs": {
+    "shape": {
+      "oneOf": [
+        {
+          "required": [
+            "rect"
+          ]
+        },
+        {
+          "required": [
+            "polygon"
+          ]
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "size_m": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "perimeter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "polygon"
+      ],
+      "properties": {
+        "polygon": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "minItems": 3
+        },
+        "gates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "opening",
+              "normal_state"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "opening": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "normal_state": {
+                "enum": [
+                  "open",
+                  "closed"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "buildings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "allOf": [
+          {
+            "$ref": "#/$defs/shape"
+          }
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rect": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "polygon": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "minItems": 3
+          }
+        }
+      }
+    },
+    "zones": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "access",
+          "vehicles",
+          "priority"
+        ],
+        "allOf": [
+          {
+            "$ref": "#/$defs/shape"
+          }
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "access": {
+            "enum": [
+              "public",
+              "employee",
+              "restricted",
+              "high_risk"
+            ]
+          },
+          "vehicles": {
+            "enum": [
+              "allowed",
+              "prohibited"
+            ]
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "rect": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "polygon": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "minItems": 3
+          }
+        }
+      }
+    },
+    "road_segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "allOf": [
+          {
+            "$ref": "#/$defs/shape"
+          }
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rect": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "polygon": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "minItems": 3
+          }
+        }
+      }
+    },
+    "patrol": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "charging_station": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "route": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "pos"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "pos": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "on_failure": {
+                "enum": [
+                  "continue",
+                  "abort",
+                  "retry_then_escalate"
+                ]
+              },
+              "retries": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

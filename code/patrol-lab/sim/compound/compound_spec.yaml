@@ -1,0 +1,47 @@
+# Fictional but real-compatible compound: a 150 m x 100 m industrial yard.
+# Frame: metres, x east, y north, origin at the south-west fence corner. A real site's survey
+# replaces this file; nothing downstream hard-codes these numbers.
+id: compound_v0
+size_m: [150, 100]
+
+perimeter:
+  polygon: [[0, 0], [150, 0], [150, 100], [0, 100]]
+  gates:
+    - {id: gate_north_01, opening: [[70, 100], [78, 100]], normal_state: closed}
+    - {id: gate_south_01, opening: [[20, 0], [28, 0]], normal_state: closed}
+
+buildings:
+  - {id: office, rect: [10, 60, 40, 90]}
+  - {id: warehouse, rect: [60, 30, 110, 70]}
+  - {id: generator_house, rect: [126, 76, 139, 89]}
+
+# access: public | employee | restricted | high_risk
+# vehicles: allowed | prohibited
+# priority: higher wins where zones overlap (most specific zone)
+zones:
+  - {id: yard, access: employee, vehicles: allowed, priority: 0, polygon: [[0, 0], [150, 0], [150, 100], [0, 100]]}
+  - {id: parking, access: employee, vehicles: allowed, priority: 1, rect: [5, 5, 45, 35]}
+  - {id: road_south, access: employee, vehicles: allowed, priority: 1, rect: [18, 0, 30, 46]}
+  - {id: road_east, access: employee, vehicles: allowed, priority: 1, rect: [18, 38, 120, 46]}
+  - {id: loading_dock, access: restricted, vehicles: allowed, priority: 2, rect: [110, 30, 125, 55]}
+  - {id: pedestrian_walk, access: employee, vehicles: prohibited, priority: 2, rect: [45, 75, 120, 82]}
+  - {id: generator_enclosure, access: high_risk, vehicles: prohibited, priority: 3, rect: [122, 72, 143, 93]}
+
+# Road cells the obstruction rule watches (Expected World State: expected clear).
+road_segments:
+  - {id: road_segment_01, rect: [18, 0, 30, 23]}
+  - {id: road_segment_02, rect: [18, 23, 30, 46]}
+  - {id: road_segment_03, rect: [30, 38, 75, 46]}
+  - {id: road_segment_04, rect: [75, 38, 120, 46]}
+
+patrol:
+  charging_station: [50, 50]
+  route:
+    - {id: cp_01_gate_south, pos: [24, 8]}
+    - {id: cp_02_parking, pos: [40, 20]}
+    - {id: cp_03_warehouse_front, pos: [80, 24]}
+    - {id: cp_04_loading_dock_view, pos: [112, 26]}
+    - {id: cp_05_east_fence, pos: [145, 50]}
+    - {id: cp_06_generator_view, pos: [118, 70]}
+    - {id: cp_07_gate_north_view, pos: [74, 92]}
+    - {id: cp_08_office, pos: [45, 70]}

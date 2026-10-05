@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "patrol-lab/incident.schema.json",
+  "title": "Operator-facing incident: factual summary + evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "subject",
+    "severity",
+    "t",
+    "t_detected",
+    "location",
+    "summary",
+    "evidence",
+    "event_ids"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^inc_[0-9]{5}$"
+    },
+    "type": {
+      "enum": [
+        "PERIMETER_BREACH",
+        "RESTRICTED_ZONE_ENTRY",
+        "PERSON_FALL",
+        "VEHICLE_IN_PROHIBITED_ZONE",
+        "GATE_LEFT_OPEN",
+        "ROUTE_OBSTRUCTION"
+      ]
+    },
+    "subject": {
+      "type": "string"
+    },
+    "severity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "t": {
+      "type": "number"
+    },
+    "t_detected": {
+      "type": "number"
+    },
+    "location": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "summary": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}

@@ -1,0 +1,72 @@
+# The other three v1 incidents, each paired with a near-miss that must NOT alert.
+id: SCN-M0-002
+name: breach_fall_vehicle
+compound: sim/compound/compound_spec.yaml
+duration_s: 120
+rate_hz: 10
+config: {gate_open_s: 20, fall_confirm_s: 2, obstruction_s: 3}
+
+actors:
+  # Staged: climbs the east fence (x = 150) from outside; the first frame inside is t = 22.5.
+  - id: person_0004
+    class: person
+    credential: unknown
+    keyframes:
+      - {t: 10, pos: [158, 60], action: walking}
+      - {t: 16, pos: [150.5, 60], action: climbing}
+      - {t: 22, pos: [150.5, 60], action: climbing}
+      - {t: 26, pos: [146, 60], action: walking}
+      - {t: 35, pos: [140, 60], action: walking}
+  # Near-miss: walks in through the north gate opening while it is open. A gate passage, not a breach.
+  - id: person_0005
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 5, pos: [74, 106], action: walking}
+      - {t: 12, pos: [74, 94], action: walking}
+  # Staged: falls at t = 40 and stays down (confirmed 2 s later).
+  - id: person_0006
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 30, pos: [60, 20], action: walking}
+      - {t: 40, pos: [62, 20], action: fallen}
+      - {t: 60, pos: [62, 20], action: fallen}
+  # Near-miss: lies down for 1 s (< 2 s confirmation), then walks on.
+  - id: person_0007
+    class: person
+    credential: unknown
+    keyframes:
+      - {t: 50, pos: [50, 60], action: walking}
+      - {t: 55, pos: [51, 60], action: lying}
+      - {t: 56, pos: [51, 60], action: walking}
+      - {t: 60, pos: [55, 60], action: walking}
+  # Staged: a vehicle drives onto the pedestrian walk; the first frame inside is t = 69.0.
+  - id: vehicle_0002
+    class: vehicle
+    keyframes:
+      - {t: 60, pos: [40, 50]}
+      - {t: 70, pos: [50, 78]}
+      - {t: 90, pos: [100, 78]}
+  # Near-miss: a vehicle on the road, where vehicles are allowed.
+  - id: vehicle_0003
+    class: vehicle
+    keyframes:
+      - {t: 0, pos: [24, 2]}
+      - {t: 15, pos: [24, 42]}
+  # Near-miss: an authorized worker enters the high-risk generator enclosure.
+  - id: person_0008
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 80, pos: [130, 68], action: walking}
+      - {t: 90, pos: [130, 80], action: walking}
+
+asset_changes:
+  - {id: gate_north_01, t: 5, state: open}      # near-miss: open 15 s < 20 s threshold
+  - {id: gate_north_01, t: 20, state: closed}
+
+staged_incidents:
+  - {type: PERIMETER_BREACH, subject: person_0004, t: 22.5, tolerance_s: 1}
+  - {type: PERSON_FALL, subject: person_0006, t: 40, tolerance_s: 1}
+  - {type: VEHICLE_IN_PROHIBITED_ZONE, subject: vehicle_0002, t: 69, tolerance_s: 1}

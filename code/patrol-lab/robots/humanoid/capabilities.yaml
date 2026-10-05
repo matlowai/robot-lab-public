@@ -1,0 +1,18 @@
+robot: g1_surrogate
+embodiment: humanoid
+# Atlas slot, filled by Unitree G1 until an electric-Atlas model is public (DECISIONS D2, D13).
+verbs:
+  outdoor_patrol: true
+  indoor_patrol: true
+  rough_terrain: true       # Isaac-Velocity-Rough-G1 exists; our policy is not trained yet
+  stairs: true
+  open_door: null           # depends on hands + a door-opening skill we don't have yet
+  press_button: null
+  manipulate: null
+  thermal_inspection: false
+  lidar_mapping: null
+limits:
+  max_speed_mps: 1.0
+  endurance_h: 2.0
+  sensor_height_m: 1.2
+provenance: "Planning values for the G1 surrogate; to be replaced by measured values from the Isaac policy."

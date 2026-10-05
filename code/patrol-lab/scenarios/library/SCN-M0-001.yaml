@@ -1,0 +1,55 @@
+# The M0 go/no-go timeline: three staged incidents plus distractors that must NOT alert.
+id: SCN-M0-001
+name: three_incident_smoke
+compound: sim/compound/compound_spec.yaml
+duration_s: 260
+rate_hz: 10
+config: {gate_open_s: 20, fall_confirm_s: 2, obstruction_s: 3}
+
+actors:
+  # Staged: unknown person walks north into the loading dock (restricted), crossing y = 30 at t = 30.
+  - id: person_0001
+    class: person
+    credential: unknown
+    keyframes:
+      - {t: 20, pos: [117, 10], action: walking}
+      - {t: 35, pos: [117, 40], action: standing}
+      - {t: 55, pos: [117, 40], action: walking}
+      - {t: 70, pos: [117, 10], action: walking}
+  # Distractor: an authorized worker makes the same entry. No alert.
+  - id: person_0002
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 40, pos: [112, 10], action: walking}
+      - {t: 60, pos: [112, 45], action: standing}
+      - {t: 75, pos: [112, 45], action: walking}
+      - {t: 90, pos: [112, 10], action: walking}
+  # Distractor: an unknown visitor on the pedestrian walk (employee zone, not restricted). No alert.
+  - id: person_0003
+    class: person
+    credential: unknown
+    keyframes:
+      - {t: 0, pos: [46, 78], action: walking}
+      - {t: 100, pos: [118, 78], action: walking}
+  # Distractor: a vehicle driving the road (vehicles allowed). No alert.
+  - id: vehicle_0001
+    class: vehicle
+    keyframes:
+      - {t: 40, pos: [24, 2]}
+      - {t: 55, pos: [24, 42]}
+      - {t: 80, pos: [100, 42]}
+
+asset_changes:
+  - {id: gate_north_01, t: 65, state: open}     # staged: stays open
+  - {id: gate_south_01, t: 150, state: open}    # distractor: open 10 s < 20 s threshold
+  - {id: gate_south_01, t: 160, state: closed}
+
+objects:
+  - {id: pallet_0001, spawn_t: 103, pos: [50, 42]}   # staged: on road_segment_03
+
+# Ground truth comes from here: what we staged, never what the rules output.
+staged_incidents:
+  - {type: RESTRICTED_ZONE_ENTRY, subject: person_0001, t: 30, tolerance_s: 1}
+  - {type: GATE_LEFT_OPEN, subject: gate_north_01, t: 65, tolerance_s: 1}
+  - {type: ROUTE_OBSTRUCTION, subject: pallet_0001, t: 103, tolerance_s: 1}

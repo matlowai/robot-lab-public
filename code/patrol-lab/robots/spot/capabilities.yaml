@@ -1,0 +1,18 @@
+robot: spot
+embodiment: quadruped
+# true = supported, false = not supported, null = unknown / depends on payload (never treated as yes)
+verbs:
+  outdoor_patrol: true
+  indoor_patrol: true
+  rough_terrain: true
+  stairs: true
+  open_door: false          # base Spot has no arm; Spot Arm would change this
+  press_button: false
+  manipulate: false
+  thermal_inspection: null  # needs the Spot CAM+IR payload
+  lidar_mapping: null       # needs a lidar payload
+limits:
+  max_speed_mps: 1.6
+  endurance_h: 1.5
+  sensor_height_m: 0.7
+provenance: "Boston Dynamics public Spot specs (1.6 m/s, ~90 min runtime); payload verbs left unknown until the sim rig is defined."

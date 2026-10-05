@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "patrol-lab/scenario.schema.json",
+  "title": "Scenario: staged actors/assets/objects and the staged incidents that are the ground truth",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "compound",
+    "duration_s",
+    "staged_incidents"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^SCN-[A-Z0-9]+-[0-9]{3}$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "compound": {
+      "type": "string"
+    },
+    "duration_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "rate_hz": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "config": {
+      "type": "object"
+    },
+    "actors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "class",
+          "keyframes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*_[0-9]{4}$"
+          },
+          "class": {
+            "enum": [
+              "person",
+              "vehicle"
+            ]
+          },
+          "credential": {
+            "enum": [
+              "authorized",
+              "unauthorized",
+              "unknown"
+            ]
+          },
+          "keyframes": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "t",
+                "pos"
+              ],
+              "properties": {
+                "t": {
+                  "type": "number"
+                },
+                "pos": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "action": {
+                  "enum": [
+                    "walking",
+                    "running",
+                    "standing",
+                    "crouching",
+                    "lying",
+                    "fallen",
+                    "climbing",
+                    "carrying"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "asset_changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "t",
+          "state"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "t": {
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "closed"
+            ]
+          }
+        }
+      }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "spawn_t",
+          "pos"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*_[0-9]{4}$"
+          },
+          "spawn_t": {
+            "type": "number"
+          },
+          "pos": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "remove_t": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "staged_incidents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "subject",
+          "t"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "PERIMETER_BREACH",
+              "RESTRICTED_ZONE_ENTRY",
+              "PERSON_FALL",
+              "VEHICLE_IN_PROHIBITED_ZONE",
+              "GATE_LEFT_OPEN",
+              "ROUTE_OBSTRUCTION"
+            ]
+          },
+          "subject": {
+            "type": "string"
+          },
+          "t": {
+            "type": "number"
+          },
+          "tolerance_s": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      }
+    }
+  }
+}

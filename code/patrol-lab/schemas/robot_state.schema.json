@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "patrol-lab/robot_state.schema.json",
+  "title": "One robot's state as reported by its RobotAdapter",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "embodiment",
+    "pose",
+    "velocity",
+    "health"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "embodiment": {
+      "enum": [
+        "quadruped",
+        "humanoid",
+        "wheeled_bimanual",
+        "wheeled"
+      ]
+    },
+    "pose": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "x, y, yaw (rad) in the site frame; null when the robot does not report one"
+    },
+    "velocity": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "battery",
+        "faults",
+        "localization_ok"
+      ],
+      "properties": {
+        "battery": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "faults": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "localization_ok": {
+          "type": "boolean"
+        }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "idle",
+            "navigating",
+            "succeeded",
+            "failed",
+            "canceled"
+          ]
+        },
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

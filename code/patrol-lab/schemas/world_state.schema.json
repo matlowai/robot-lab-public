@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "patrol-lab/world_state.schema.json",
+  "title": "Expected World State delta: expected vs observed for one asset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "asset_id",
+    "asset_type",
+    "change",
+    "expected",
+    "observed"
+  ],
+  "properties": {
+    "asset_id": {
+      "type": "string"
+    },
+    "asset_type": {
+      "enum": [
+        "gate",
+        "door",
+        "road_segment"
+      ]
+    },
+    "change": {
+      "enum": [
+        "unexpected_state_transition",
+        "new_object",
+        "missing_object",
+        "geometry_deviation"
+      ]
+    },
+    "expected": {
+      "type": "object"
+    },
+    "observed": {
+      "type": "object"
+    }
+  }
+}

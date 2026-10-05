@@ -1,0 +1,57 @@
+# Book readers: people who walk straight lines across and along Spot's patrol, never looking up from their
+# books. They never react to Spot; avoiding them is entirely on Spot (lidar + local planner, --avoid).
+# Paths are laid along the patrol legs using Spot's deterministic base-run timing (checkpoints at
+# 50.4 / 72.4 / 112.3 / 144.3 / 185.1 / 219.7 / 268.4 / 305.2 s), with long straight walks so the meetings
+# still happen when avoidance shifts Spot's timing. Everyone is authorized: nothing here should raise an
+# incident, so any event is a false alarm. Scored on near misses (clearance < 0.30 m) as well.
+id: SCN-M1-003
+name: book_readers
+compound: sim/compound/compound_spec.yaml
+duration_s: 330
+rate_hz: 10
+config: {gate_open_s: 20, fall_confirm_s: 2, obstruction_s: 3}
+
+actors:
+  # Leg 1 (charging -> cp_01): walks the whole leg head-on, toward the charging station.
+  - id: person_0101
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 8, pos: [25, 10], action: walking}
+      - {t: 50, pos: [49, 48], action: walking}
+  # Leg 3 (cp_02 -> cp_03): stands in the middle of the leg, reading, for the whole patrol.
+  - id: person_0102
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 0, pos: [60, 22], action: standing}
+      - {t: 330, pos: [60, 22], action: standing}
+  # Leg 5 (cp_04 -> cp_05): two readers side by side, 1.2 m apart, walking the leg head-on.
+  - id: person_0103
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 145, pos: [142.6, 49.0], action: walking}
+      - {t: 181, pos: [112.6, 27.2], action: walking}
+  - id: person_0104
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 145, pos: [143.4, 48.0], action: walking}
+      - {t: 181, pos: [113.4, 26.2], action: walking}
+  # Leg 7 (cp_06 -> cp_07): crosses perpendicular to the leg, on an intercept course with its midpoint.
+  - id: person_0105
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 232, pos: [90.6, 71.0], action: walking}
+      - {t: 256, pos: [101.4, 91.7], action: walking}
+  # Last leg (cp_08 -> charging): walks it head-on, from the charging station toward the office.
+  - id: person_0106
+    class: person
+    credential: authorized
+    keyframes:
+      - {t: 300, pos: [50, 51.5], action: walking}
+      - {t: 320, pos: [45.5, 68], action: walking}
+
+staged_incidents: []

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "patrol-lab/capabilities.schema.json",
+  "title": "Robot capability manifest (tri-state verbs: true / false / null = unknown)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "robot",
+    "embodiment",
+    "verbs"
+  ],
+  "properties": {
+    "robot": {
+      "type": "string"
+    },
+    "embodiment": {
+      "enum": [
+        "quadruped",
+        "humanoid",
+        "wheeled_bimanual",
+        "wheeled"
+      ]
+    },
+    "verbs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outdoor_patrol",
+        "indoor_patrol",
+        "rough_terrain",
+        "stairs",
+        "open_door",
+        "press_button",
+        "manipulate",
+        "thermal_inspection",
+        "lidar_mapping"
+      ],
+      "properties": {
+        "outdoor_patrol": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "indoor_patrol": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "rough_terrain": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "stairs": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "open_door": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "press_button": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "manipulate": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "thermal_inspection": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "lidar_mapping": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "provenance": {
+      "type": "string"
+    }
+  }
+}

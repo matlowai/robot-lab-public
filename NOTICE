@@ -1,0 +1,11 @@
+Blackforge Robot Lab (public snapshot)
+Copyright 2026 Dylan Matlow
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This code builds on, but does not include, third-party software:
+- NVIDIA Isaac Sim / Isaac Lab (BSD-3-Clause for Isaac Lab); the SO-101 tasks extend Isaac Lab's SO-101 stack task.
+- LeRobot (Apache-2.0).
+- The FLUX 3 Action inference code is Apache-2.0; the FLUX 3 Action model weights are under the
+  FLUX Kommunity License (non-commercial) and are NOT included or required by this repository's license.
+No model weights, datasets or third-party assets are included.
