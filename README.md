@@ -7,6 +7,9 @@ SO-101 arm learning to put objects in a bowl in Isaac Lab 3.0.
 - **Course site:** <https://matlowai.github.io/robot-lab-public/> (source: [`docs/index.html`](docs/index.html)).
   It currently carries Part II (Patrol Lab). Part I (the SO-101 arm) is being redone with an openly licensed
   action model and will be added.
+- **Talk ("Machines Among Us"):** <https://matlowai.github.io/robot-lab-public/talk/>: the opening reel,
+  a 29-slide deck and an interactive field guide (state as of 2026-10-01). Some of its media are FLUX 3
+  Action outputs under a non-commercial license; see [`docs/talk/MEDIA-LICENSE.md`](docs/talk/MEDIA-LICENSE.md).
 - **Reference code:** [`code/robot-lab/`](code/robot-lab/): the SO-101 Isaac Lab tasks (`robot_lab/tasks/`), the
   scripted expert and recorder, LeRobot conversion, evaluation and the probes used to debug the scene.
   Start with [`PRIMER.md`](code/robot-lab/PRIMER.md).
@@ -30,5 +33,7 @@ packaged library.
 
 ## License
 
-Apache-2.0 for the code and course text in this repository ([LICENSE](LICENSE), [NOTICE](NOTICE)).
-Third-party software and model weights keep their own licenses and are not included.
+Apache-2.0 for the code, course and talk text in this repository ([LICENSE](LICENSE), [NOTICE](NOTICE)),
+**except** the FLUX 3 Action media listed in [`docs/talk/MEDIA-LICENSE.md`](docs/talk/MEDIA-LICENSE.md), which
+are non-commercial (FLUX Kommunity License). Third-party software and model weights keep their own
+licenses and are not included.

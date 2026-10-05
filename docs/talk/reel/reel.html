@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening Reel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root { --ink:#0E1724; --panel:#152234; --line:#26364D; --paper:#EEF1F4; --muted:#9AA8BA; --hazard:#F2B33D; --sensor:#5CC8D6; --alarm:#E8664A; color-scheme: dark; }
+  html, body { margin:0; height:100%; background:var(--ink); color:var(--paper); font-family:'Instrument Sans', system-ui, sans-serif; }
+  body { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; overflow:hidden; }
+  #c { display:block; width:min(100vw, calc((100vh - 64px) * 16 / 9)); aspect-ratio:16/9; background:var(--ink); }
+  [hidden] { display:none !important; }
+  #bar { display:flex; align-items:center; gap:14px; width:min(100vw, calc((100vh - 64px) * 16 / 9)); padding:0 16px; box-sizing:border-box; }
+  #bar button { font:600 14px 'JetBrains Mono', ui-monospace, monospace; background:var(--panel); color:var(--paper); border:1px solid var(--line); border-radius:8px; padding:8px 14px; cursor:pointer; min-width:84px; }
+  #bar button:focus-visible, #scrub:focus-visible { outline:2px solid var(--hazard); outline-offset:2px; }
+  #track { position:relative; flex:1; display:flex; align-items:center; }
+  #scrub { width:100%; accent-color:var(--hazard); }
+  .stopmark { position:absolute; top:-9px; width:9px; height:9px; background:var(--hazard); transform:translateX(-50%) rotate(45deg); pointer-events:none; }
+  #auto { font:400 14px 'Instrument Sans', system-ui, sans-serif; color:var(--muted); display:flex; gap:6px; align-items:center; white-space:nowrap; }
+  #stage { position:relative; }
+  #card { position:absolute; left:2.5%; bottom:9%; width:min(60%, 760px); box-sizing:border-box;
+          background:rgba(14,23,36,0.92); border:1px solid var(--line); border-left:6px solid var(--hazard); border-radius:12px; padding:18px 22px; }
+  #card h2 { margin:0 0 6px; font:800 clamp(16px, 2.2vw, 30px)/1.15 Archivo, Arial, sans-serif; color:var(--paper); }
+  #card p { margin:0; font:400 clamp(13px, 1.4vw, 19px)/1.4 'Instrument Sans', system-ui, sans-serif; color:var(--muted); }
+  #card .go { margin-top:10px; font:600 clamp(12px, 1.1vw, 15px) 'JetBrains Mono', ui-monospace, monospace; color:var(--hazard); }
+  #time { font:400 14px 'JetBrains Mono', ui-monospace, monospace; color:var(--muted); font-variant-numeric:tabular-nums; min-width:110px; text-align:right; }
+  video { display:none; }
+  body.render { display:block; }
+  body.render #c { width:1920px; height:1080px; }
+  body.render #bar, body.render #card { display:none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="1920" height="1080" aria-label="Opening reel: robots learning to act in simulation"></canvas>
+  <div id="card" hidden role="status" aria-live="polite"><h2 id="cardTitle"></h2><p id="cardWhy"></p><p class="go">Press Play or Space to continue</p></div>
+</div>
+<div id="bar">
+  <button id="play" type="button">Play</button>
+  <div id="track"><input id="scrub" type="range" min="0" max="60" step="0.01" value="0" aria-label="Timeline"></div>
+  <label id="auto"><input id="autostop" type="checkbox" checked> Pause at key moments</label>
+  <span id="time">0.00</span>
+</div>
+
+<script>
+/* ======================================================================
+   EDIT HERE. Everything the reel says, every beat and every colour.
+   Scenes run back to back; each overlaps the next by `fade` seconds.
+   Beat times are seconds from the scene's own start.
+   render.mjs and sound.mjs read this same block.
+   ====================================================================== */
+/*TIMELINE-START*/
+const TIMELINE = {
+  fps: 30,
+  fade: 0.3,            // crossfade + push between scenes
+  push: 0.025,          // slow camera push-in over each scene (fraction of size)
+  colors: { ink: '#0E1724', panel: '#152234', line: '#26364D', paper: '#EEF1F4', muted: '#9AA8BA',
+            hazard: '#F2B33D', sensor: '#5CC8D6', alarm: '#E8664A' },
+  fonts: { display: "Archivo, 'Arial Narrow', Arial, sans-serif",
+           body: "'Instrument Sans', 'Helvetica Neue', Arial, sans-serif",
+           mono: "'JetBrains Mono', 'DejaVu Sans Mono', monospace" },
+  videos: {
+    race:   '../media/race_seed21.mp4',
+    fake:   '../media/arm_fake_success.mp4',
+    real:   '../media/arm_first_success.mp4',
+    droidA: 'droid_smooth.mp4',     // DROID clip, slowed to 0.75x with motion interpolation (see README)
+    droidB: 'droid_smooth.mp4',     // second copy, for the crossfade at the loop point
+  },
+  // chapter line along the bottom edge: one segment per scene (empty label = unlabeled segment)
+  chapters: { show: 1.2, y: 1046 },
+  // Stop points: a held beat right after a scene's key reveal. The content slows to holdSpeed
+  // while the camera drift and ambient motion continue. A player can pause here (chapters.js).
+  // `at` = seconds into the scene's content; `hold` = real seconds the beat lasts.
+  holdSpeed: 0.15,
+  scenes: [
+    { id: 'plaza',       chapter: '', len: 4.8, beats: { line1: 0.4, line2: 1.9 } },
+    { id: 'crowd',       chapter: 'Race', len: 'race', push: 0.01, clips: [{ video: 'race', map: 'race' }],
+      stop: { at: 'race', hold: 1.6, title: 'The test was timed to the slow robot', why: 'The walkers followed a timetable fitted to the no-avoidance robot, so the two faster robots passed every encounter before its walker arrived and never faced the test; the only contacts were late walkers reaching the charger after they parked. The fix: pedestrians that react to whichever robot is in front of them.' } },
+    { id: 'worlds',      chapter: 'Scale', len: 6.4, beats: { zoom: [0.2, 2.8], count: [0.8, 4.6], done: 4.7, sub: 4.9 } },
+    { id: 'reward',      chapter: 'Reward', len: 5.7, beats: { type: 0.5, cps: 24, statement: 2.8, sub: 4.2 },
+      stop: { at: 4.6, hold: 1.3, title: "Whatever you don't price in, it ignores", why: 'Every weight on this receipt, from +1 per metre of progress to −10 for contact, is a design choice, and the policy optimizes exactly what is on it.' } },
+    { id: 'curves',      chapter: 'Training', len: 5.7, beats: { draw: [0.4, 4.0], note: 4.2 },
+      stop: { at: 4.6, hold: 1.3, title: 'Same algorithm, harder world', why: 'With straight-line walkers PPO reached 96% training success; once pedestrians reacted to the robot, the same setup ended between 31% and 41%.' } },
+    { id: 'denominator', chapter: 'Denominator', len: 5.15, beats: { row1: 0.2, tie: 1.0, row2: 1.35, strike: 1.55, row3: 2.2, lesson: 3.2 },
+      stop: { at: 3.85, hold: 1.5, title: 'Report the denominator', why: 'On hits per commit the RL policy looked tied with the planner (37.2% vs 38.5%), but it bumped ordinary people in 61 of 80 runs versus 27 and took longer (462 s vs 377 s median).' } },
+    { id: 'arm',         chapter: 'Real or fake', len: 4.8, beats: { stampFake: 0.5, stampReal: 0.8, strike: 1.8, real: 3.1 },
+      stop: { at: 3.7, hold: 1.3, title: 'Real or fake?', why: 'All seven successes the detector reported overnight were fake; with the jaw pre-opened, one of six attempts was a genuine grasp, lift, carry and place.' },
+      clips: [{ video: 'fake', from: 0, loop: 3.5, fps: 30 }, { video: 'real', from: 3, fps: 30 }] },
+    { id: 'imagine',     chapter: 'Imagination', len: 4.6, clips: [{ video: 'droidA', pair: 'droidB', len: 2.72, xfade: 0.35, fps: 30 }],
+      stop: { at: 1.7, hold: 1.3, title: 'It imagines the next two seconds', why: 'Alongside its next moves the model predicts video of what it expects to see; that video is usually thrown away, but it shows what the model thinks will happen.' } },
+    { id: 'close',       chapter: 'Close', len: 4.6 },
+  ],
+  // The full seed-21 race, fast-forwarded. Times are sim seconds (= video seconds).
+  race: {
+    speed: 24,                    // sim seconds per reel second, constant
+    lead: 0.15,                   // reel seconds held on 0:00 while the scene arrives
+    tail: 0.5,                    // reel seconds after the last event before the next scene starts
+    checkpoints: 8,               // the route has 8 checkpoints, then back to the charger
+    lanes: [                      // top to bottom, as stacked in the video
+      { name: 'No avoidance', color: '#9AA8BA',
+        ck: [50.4, 72.4, 112.3, 144.3, 185.1, 219.7, 268.4], fell: 295.0 },
+      { name: 'Hand-written planner', color: '#5CC8D6',
+        ck: [46.6, 66.5, 105.1, 135.1, 172.7, 204.2, 249.6, 283.1], done: 302.3, fell: 314.0, parked: true },
+      { name: 'RL policy', color: '#F2B33D',
+        ck: [44.4, 63.9, 100.1, 128.6, 165.3, 195.6, 239.5, 273.2], done: 292.4 },
+    ],
+  },
+  // sound cues (sound.mjs): whoosh | tick | ticks | stamp | hit | riser | chime. More are derived below.
+  cues: [
+    { scene: 'plaza', at: 0.4, type: 'tick', gain: 0.6 },
+    { scene: 'plaza', at: 1.9, type: 'tick', gain: 0.6 },
+    { scene: 'crowd', at: 0, type: 'whoosh' },
+    { scene: 'worlds', at: 0, type: 'whoosh' },
+    { scene: 'worlds', at: 0.8, type: 'ticks', until: 4.6, every: 0.11, gain: 0.35 },
+    { scene: 'worlds', at: 4.7, type: 'stamp', gain: 0.6 },
+    { scene: 'reward', at: 0, type: 'whoosh' },
+    { scene: 'reward', at: 2.8, type: 'hit', gain: 0.35 },
+    { scene: 'curves', at: 0, type: 'whoosh' },
+    { scene: 'curves', at: 0.4, type: 'riser', length: 3.6, gain: 0.5 },
+    { scene: 'denominator', at: 0, type: 'whoosh' },
+    { scene: 'denominator', at: 0.2, type: 'tick', gain: 0.5 },
+    { scene: 'denominator', at: 1.0, type: 'tick', gain: 0.7 },
+    { scene: 'denominator', at: 1.35, type: 'hit', gain: 1.0 },    // the reveal
+    { scene: 'denominator', at: 3.2, type: 'stamp', gain: 0.6 },
+    { scene: 'arm', at: 0, type: 'whoosh' },
+    { scene: 'arm', at: 0.5, type: 'stamp' },
+    { scene: 'arm', at: 0.8, type: 'stamp' },
+    { scene: 'arm', at: 1.8, type: 'hit', gain: 0.8 },
+    { scene: 'arm', at: 3.1, type: 'chime', gain: 0.45 },
+    { scene: 'imagine', at: 0, type: 'whoosh' },
+    { scene: 'close', at: 0, type: 'whoosh', gain: 0.7 },
+    { scene: 'close', at: 0.2, type: 'chime', gain: 0.8 },
+  ],
+};
+
+const COPY = {
+  plaza: { line1: 'Machines are learning to act.', line2: "in worlds that don't exist yet." },
+  crowd: {
+    eyebrow: 'SAME CROWD · THREE CONTROLLERS · THE WHOLE PATROL',
+    title: 'Who finishes the patrol?',
+    caption: 'Walkers on a fixed timetable · early policy',
+    lateWalker: 'late walker, scheduled for the slow robot',
+    ranks: ['1st', '2nd', '3rd'],
+    firstTag: 'first home',
+    behind: 's behind',
+    fell: 'knocked over',
+    fellParked: 'knocked over while parked',
+    checkpoints: 'checkpoints',
+    speed: '×',
+  },
+  worlds: {
+    eyebrow: 'PARALLEL SIMULATION',
+    line1: '4,096 worlds', line2: 'at once.',
+    steps: 2100000000, stepsLabel: 'steps of experience',
+    done: '2.1 billion steps', sub: '2 hours · one workstation',
+  },
+  reward: {
+    header: 'REWARD · PER STEP',
+    rows: [
+      ['progress', '+1.0 / m', false],
+      ['time', '−0.01', false],
+      ['smoothness', '−0.01·‖Δa‖²', false],
+      ['near-miss', 'up to −1.0', false],
+      ['personal space', '−0.2', false],
+      ['contact', '−10', true],
+      ['wall', '−10', true],
+      ['success', '+10', true],
+    ],
+    footer: 'END = the episode stops here',
+    statement: ['Whatever you', "don't price in,", 'it ignores.'],
+    sub: 'Every number on this receipt is a design decision.',
+  },
+  curves: {
+    eyebrow: 'TRAINING SUCCESS · REAL LOGS',
+    title: 'Same algorithm. Harder world.',
+    sub: '4,096 worlds per run · 2 hours each · one GPU',
+    runs: [
+      { key: 'legacy', label: 'Straight-line walkers', color: 'paper' },
+      { key: 'v1', label: 'v1 + adversarial pedestrians', color: 'alarm' },
+      { key: 'v2', label: 'v2 + longer memory', color: 'sensor' },
+      { key: 'v3', label: 'v3 + everyday crowds', color: 'hazard' },
+    ],
+    note: 'Final training success: easy 96% · v1 31% · v2 41% · v3 32%',
+  },
+  denominator: {
+    eyebrow: 'HELD-OUT TEST · 80 RUNS',
+    groups: [
+      { title: 'Adversarial pedestrians: hit per commit', max: 100, unit: '%', rows: [['RL policy (v1)', 37.2, 'hazard'], ['Hand-written planner', 38.5, 'sensor']] },
+      { title: 'Runs that bumped ordinary people', max: 80, unit: ' of 80', rows: [['RL policy (v1)', 61, 'alarm'], ['Hand-written planner', 27, 'sensor']] },
+      { title: 'Median patrol time', max: 500, unit: ' s', rows: [['RL policy (v1)', 462, 'alarm'], ['Hand-written planner', 377, 'sensor']] },
+    ],
+    tie: 'A tie?',
+    lesson: 'Report the denominator.',
+  },
+  arm: {
+    eyebrow: 'ROBOT ARM · MUG INTO BOWL',
+    title: 'The detector said SUCCESS. Twice.',
+    stamp: 'SUCCESS',
+    fakeNote: 'Fake: the bowl spawned on top of the box',
+    realNote: 'Real: grasp, lift, carry, place',
+    line1: 'Seven successes. All seven fake.',
+    line2: '1 of 6, real.',
+  },
+  imagine: {
+    eyebrow: 'WORLD MODEL',
+    title: ['It imagines', 'the next', 'two seconds.'],
+    body: 'A 7B action model plans the next moves and, alongside them, a video of what it expects to see. That video is usually thrown away.',
+    real: 'What happened', imagined: 'What it imagined',
+    credit: 'Real robot episode from the DROID dataset · 0.75× speed',
+  },
+  close: {
+    line1: 'Evaluation', line2: 'is the product.',
+    sub: 'Simulation · Reinforcement learning · World models',
+    credit: 'Sim: NVIDIA Isaac Sim / Isaac Lab · Model: FLUX 3 Action, Black Forest Labs · Data: DROID (CC BY 4.0)',
+  },
+};
+
+// --- Derived. No need to edit below this line inside the block. ---
+const RACE = TIMELINE.race;
+const RACE_LAST = Math.max(...RACE.lanes.flatMap(l => [l.done || 0, l.fell || 0]));
+function raceSceneTime(T) { return RACE.lead + T / RACE.speed; }                        // sim s -> scene s
+function raceSimTime(u) { return Math.min(Math.max(0, (u - RACE.lead) * RACE.speed), RACE_LAST + (RACE.tail + TIMELINE.fade) * RACE.speed); }
+// A stop point holds a scene: content time (what the drawing uses) runs at holdSpeed for `hold` real seconds.
+function contentTime(s, u) {             // real seconds into the scene -> content seconds
+  const st = s.stop, k = TIMELINE.holdSpeed; if (!st || u < st.at) return u;
+  if (u < st.at + st.hold) return st.at + (u - st.at) * k;
+  return u - st.hold * (1 - k);
+}
+function realTime(s, c) {                // content seconds -> real seconds into the scene
+  const st = s.stop, k = TIMELINE.holdSpeed; if (!st || c <= st.at) return c;
+  if (c <= st.at + st.hold * k) return st.at + (c - st.at) / k;
+  return c + st.hold * (1 - k);
+}
+(() => {
+  let start = 0;
+  for (const s of TIMELINE.scenes) {
+    if (s.len === 'race') s.len = raceSceneTime(RACE_LAST) + RACE.tail + TIMELINE.fade;
+    if (s.stop && s.stop.at === 'race') s.stop.at = raceSceneTime(RACE_LAST) + 0.4;
+    s.content = s.len;
+    s.len = s.content + (s.stop ? s.stop.hold * (1 - TIMELINE.holdSpeed) : 0);
+    s.start = start; s.end = start + s.len; start = s.end - TIMELINE.fade;
+  }
+  const last = TIMELINE.scenes[TIMELINE.scenes.length - 1];
+  TIMELINE.duration = +last.end.toFixed(3);
+  // pause frame for each stop: inside the hold, after everything has settled
+  TIMELINE.stops = TIMELINE.scenes.filter(s => s.stop).map(s => ({
+    t: +(s.start + s.stop.at + s.stop.hold * 0.6).toFixed(3), from: s.start + s.stop.at, to: s.start + s.stop.at + s.stop.hold,
+    title: s.stop.title, why: s.stop.why, scene: s.id }));
+  const den = TIMELINE.stops.find(x => x.scene === 'denominator');
+  TIMELINE.still = den.t;                                          // poster frame: the settled denominator
+})();
+// receipt typing schedule: one constant typing speed across all rows
+function receiptSchedule() {
+  const b = TIMELINE.scenes.find(s => s.id === 'reward').beats; let t = b.type;
+  return COPY.reward.rows.map(([name]) => { const a = t; t += name.length / b.cps; return [a, t]; });
+}
+for (const [, end] of receiptSchedule()) TIMELINE.cues.push({ scene: 'reward', at: end, type: 'tick', gain: 0.55 });
+for (const lane of RACE.lanes) {
+  if (lane.done) TIMELINE.cues.push({ scene: 'crowd', at: raceSceneTime(lane.done), type: 'chime', gain: 0.55 });
+  if (lane.fell) TIMELINE.cues.push({ scene: 'crowd', at: raceSceneTime(lane.fell), type: 'hit', gain: 0.45 });
+}
+for (const c of TIMELINE.cues) {         // cue times are content times; shift them past any hold
+  const s = TIMELINE.scenes.find(x => x.id === c.scene);
+  c.at = realTime(s, c.at); if (c.until != null) c.until = realTime(s, c.until);
+}
+/*TIMELINE-END*/
+
+/* Real training curves (PPO logs, downsampled from media/curves.json): [wall-clock hours, success rate].
+   render.mjs refreshes this line on every run. */
+const CURVES = /*CURVES-START*/{"legacy":[[0,0.8344],[0.017,0.9065],[0.032,0.9254],[0.048,0.9282],[0.065,0.9293],[0.082,0.9362],[0.098,0.943],[0.115,0.9397],[0.132,0.9324],[0.148,0.9362],[0.167,0.9426],[0.183,0.9416],[0.2,0.9427],[0.217,0.9382],[0.233,0.9443],[0.25,0.9491],[0.267,0.9542],[0.282,0.9529],[0.298,0.9516],[0.315,0.9512],[0.332,0.9501],[0.348,0.9534],[0.365,0.9554],[0.383,0.9558],[0.4,0.9559],[0.418,0.9568],[0.435,0.96],[0.452,0.9613],[0.468,0.9586],[0.485,0.9595],[0.502,0.9603],[0.517,0.9601],[0.533,0.9617],[0.55,0.96],[0.567,0.9609],[0.583,0.9607],[0.598,0.961],[0.615,0.962],[0.632,0.964],[0.648,0.9619],[0.667,0.964],[0.683,0.9605],[0.7,0.9643],[0.718,0.9644],[0.735,0.959],[0.752,0.9608],[0.768,0.9609],[0.783,0.9604],[0.802,0.9619],[0.817,0.9623],[0.833,0.9639],[0.85,0.9642],[0.867,0.9666],[0.885,0.9631],[0.902,0.9634],[0.918,0.9625],[0.935,0.9609],[0.953,0.9608],[0.97,0.9579],[0.987,0.9618],[1.005,0.9584],[1.022,0.9604],[1.038,0.9616],[1.053,0.9627],[1.07,0.9645],[1.087,0.9641],[1.103,0.9658],[1.12,0.9636],[1.137,0.9639],[1.153,0.9602],[1.17,0.9618],[1.187,0.9629],[1.203,0.963],[1.222,0.9627],[1.238,0.96],[1.255,0.9607],[1.272,0.962],[1.288,0.9641],[1.305,0.9627],[1.323,0.9626],[1.34,0.9629],[1.357,0.961],[1.375,0.9602],[1.392,0.9603],[1.408,0.9633],[1.425,0.964],[1.442,0.9607],[1.458,0.9618],[1.475,0.961],[1.492,0.9606],[1.508,0.9588],[1.525,0.9611],[1.542,0.9597],[1.557,0.9625],[1.573,0.9622],[1.59,0.9624],[1.607,0.9647],[1.622,0.9629],[1.638,0.9624],[1.655,0.9617],[1.672,0.9557],[1.687,0.9615],[1.703,0.9592],[1.72,0.9591],[1.735,0.9596],[1.752,0.9601],[1.767,0.9599],[1.783,0.9589],[1.8,0.9596],[1.815,0.9591],[1.832,0.9588],[1.848,0.9618],[1.863,0.9616],[1.88,0.9618],[1.897,0.9631],[1.913,0.9626],[1.93,0.9592],[1.947,0.9594],[1.963,0.9626],[1.98,0.9615],[1.995,0.96]],"v1":[[0,0.0261],[0.017,0.0611],[0.032,0.1072],[0.048,0.1183],[0.065,0.1468],[0.082,0.1726],[0.098,0.1782],[0.115,0.1675],[0.135,0.1881],[0.153,0.202],[0.172,0.2324],[0.19,0.2434],[0.208,0.2475],[0.228,0.2433],[0.247,0.2563],[0.265,0.2773],[0.283,0.3006],[0.302,0.2924],[0.32,0.3007],[0.337,0.3167],[0.353,0.3083],[0.372,0.3072],[0.388,0.2912],[0.407,0.3021],[0.423,0.3189],[0.44,0.3299],[0.457,0.3257],[0.473,0.3258],[0.49,0.3253],[0.507,0.3084],[0.522,0.297],[0.538,0.3156],[0.555,0.3065],[0.573,0.3125],[0.59,0.3302],[0.607,0.3406],[0.623,0.3419],[0.642,0.349],[0.658,0.3511],[0.675,0.3545],[0.69,0.3581],[0.707,0.353],[0.723,0.3513],[0.74,0.3545],[0.755,0.3477],[0.772,0.3531],[0.788,0.3463],[0.803,0.3393],[0.82,0.3363],[0.837,0.3426],[0.853,0.3506],[0.87,0.3565],[0.885,0.3596],[0.902,0.3587],[0.918,0.3689],[0.935,0.3729],[0.95,0.3768],[0.967,0.3601],[0.983,0.364],[0.998,0.3651],[1.015,0.3597],[1.032,0.3563],[1.047,0.3704],[1.063,0.3711],[1.08,0.3713],[1.097,0.3735],[1.112,0.3745],[1.128,0.3671],[1.145,0.3713],[1.162,0.3727],[1.177,0.3708],[1.193,0.3617],[1.21,0.3571],[1.225,0.3801],[1.242,0.3836],[1.258,0.3839],[1.275,0.3872],[1.29,0.3852],[1.307,0.3754],[1.323,0.3796],[1.338,0.3729],[1.355,0.3691],[1.372,0.3762],[1.388,0.3866],[1.403,0.3825],[1.42,0.3853],[1.437,0.3882],[1.453,0.3794],[1.468,0.3658],[1.485,0.3687],[1.502,0.3671],[1.517,0.3617],[1.533,0.3596],[1.55,0.3668],[1.567,0.3695],[1.583,0.3603],[1.6,0.365],[1.615,0.3549],[1.632,0.3555],[1.648,0.3497],[1.663,0.3641],[1.68,0.3664],[1.697,0.3631],[1.713,0.3661],[1.728,0.3732],[1.745,0.3703],[1.762,0.3596],[1.778,0.3499],[1.793,0.3525],[1.81,0.3577],[1.827,0.3499],[1.843,0.3528],[1.858,0.3356],[1.875,0.3339],[1.892,0.3425],[1.907,0.3399],[1.923,0.3491],[1.94,0.3486],[1.955,0.3507],[1.972,0.3468],[1.988,0.3563]],"v2":[[0,0.0164],[0.017,0.0391],[0.033,0.0519],[0.048,0.0664],[0.065,0.098],[0.083,0.1316],[0.1,0.1311],[0.117,0.1523],[0.133,0.1687],[0.15,0.1894],[0.165,0.1867],[0.182,0.1959],[0.198,0.202],[0.215,0.2131],[0.232,0.2083],[0.248,0.2142],[0.265,0.1968],[0.282,0.1968],[0.297,0.1982],[0.313,0.1897],[0.332,0.173],[0.348,0.1805],[0.363,0.196],[0.38,0.2175],[0.398,0.2248],[0.415,0.2293],[0.432,0.2413],[0.448,0.2337],[0.465,0.2348],[0.482,0.2263],[0.498,0.2475],[0.515,0.2375],[0.532,0.2564],[0.548,0.2725],[0.565,0.2669],[0.582,0.2725],[0.598,0.2749],[0.615,0.2849],[0.632,0.2762],[0.648,0.261],[0.665,0.262],[0.68,0.273],[0.697,0.2688],[0.713,0.2757],[0.73,0.2816],[0.747,0.299],[0.763,0.2983],[0.78,0.2947],[0.797,0.3092],[0.813,0.3179],[0.83,0.3127],[0.845,0.3247],[0.862,0.3227],[0.878,0.337],[0.895,0.3519],[0.912,0.3473],[0.928,0.3553],[0.945,0.3582],[0.962,0.3631],[0.977,0.3702],[0.993,0.3583],[1.01,0.3677],[1.027,0.3626],[1.043,0.3868],[1.06,0.3846],[1.077,0.3865],[1.093,0.4066],[1.11,0.4153],[1.127,0.4083],[1.143,0.4072],[1.16,0.4066],[1.177,0.419],[1.192,0.4311],[1.208,0.4232],[1.225,0.4322],[1.242,0.4437],[1.258,0.4313],[1.275,0.4194],[1.29,0.4231],[1.307,0.4197],[1.323,0.4162],[1.34,0.4149],[1.357,0.4041],[1.373,0.4017],[1.392,0.3943],[1.407,0.3849],[1.423,0.3846],[1.44,0.3776],[1.457,0.3867],[1.473,0.3867],[1.49,0.3976],[1.507,0.3924],[1.523,0.3981],[1.538,0.3997],[1.555,0.4053],[1.572,0.4064],[1.588,0.4097],[1.605,0.41],[1.622,0.4078],[1.638,0.3835],[1.655,0.3744],[1.672,0.3798],[1.688,0.3853],[1.705,0.3885],[1.722,0.3795],[1.738,0.3856],[1.755,0.3917],[1.772,0.3917],[1.788,0.4005],[1.805,0.4039],[1.822,0.4002],[1.837,0.4131],[1.853,0.4227],[1.87,0.4231],[1.887,0.4193],[1.903,0.4229],[1.92,0.4218],[1.937,0.4193],[1.953,0.4166],[1.97,0.4125],[1.987,0.4046]],"v3":[[0,0.0157],[0.017,0.0573],[0.033,0.0812],[0.048,0.1109],[0.065,0.1266],[0.082,0.1409],[0.098,0.1476],[0.113,0.1521],[0.13,0.1679],[0.147,0.1666],[0.163,0.1885],[0.18,0.2113],[0.197,0.2111],[0.212,0.2151],[0.228,0.2186],[0.245,0.1974],[0.262,0.1745],[0.278,0.1592],[0.293,0.1702],[0.31,0.1762],[0.327,0.1745],[0.343,0.1715],[0.36,0.1719],[0.377,0.1875],[0.393,0.215],[0.408,0.2236],[0.425,0.2286],[0.442,0.2183],[0.457,0.2094],[0.473,0.2175],[0.49,0.2247],[0.507,0.2277],[0.522,0.2392],[0.538,0.2538],[0.555,0.2507],[0.572,0.2481],[0.588,0.2567],[0.605,0.2669],[0.62,0.2716],[0.637,0.2655],[0.653,0.271],[0.67,0.2697],[0.687,0.2728],[0.703,0.2794],[0.72,0.2811],[0.737,0.2816],[0.753,0.2861],[0.768,0.2836],[0.785,0.2783],[0.802,0.2789],[0.818,0.2815],[0.835,0.2834],[0.852,0.2717],[0.868,0.2583],[0.885,0.2596],[0.902,0.2645],[0.918,0.2518],[0.935,0.2644],[0.952,0.2638],[0.967,0.2766],[0.983,0.2871],[1,0.2959],[1.017,0.2968],[1.033,0.2988],[1.05,0.296],[1.065,0.2974],[1.082,0.2985],[1.098,0.3047],[1.115,0.2984],[1.13,0.2982],[1.147,0.3079],[1.163,0.3135],[1.182,0.3138],[1.197,0.3164],[1.213,0.3155],[1.23,0.3211],[1.247,0.3213],[1.263,0.3207],[1.28,0.3167],[1.297,0.3156],[1.313,0.318],[1.33,0.3183],[1.347,0.3095],[1.365,0.3036],[1.383,0.3059],[1.402,0.3098],[1.418,0.3149],[1.435,0.307],[1.452,0.3071],[1.468,0.3118],[1.485,0.3145],[1.502,0.3125],[1.518,0.3106],[1.535,0.3157],[1.552,0.3204],[1.568,0.3286],[1.587,0.3272],[1.603,0.3317],[1.62,0.3302],[1.635,0.33],[1.653,0.3293],[1.67,0.3293],[1.685,0.3217],[1.703,0.3154],[1.72,0.3189],[1.737,0.3078],[1.753,0.3004],[1.77,0.3003],[1.787,0.3184],[1.805,0.3201],[1.822,0.3253],[1.838,0.3288],[1.855,0.326],[1.872,0.324],[1.888,0.3299],[1.905,0.3294],[1.922,0.3308],[1.938,0.3284],[1.953,0.3397],[1.97,0.3323],[1.987,0.334]]}/*CURVES-END*/;
+
+/* ======================================================================
+   Engine. Deterministic: the frame at time t depends only on t.
+   ====================================================================== */
+const W = 1920, H = 1080;
+const C = TIMELINE.colors, F = TIMELINE.fonts;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const RENDER = new URLSearchParams(location.search).has('render');
+if (RENDER) document.body.classList.add('render');
+const SC = Object.fromEntries(TIMELINE.scenes.map(s => [s.id, s]));
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const prog = (u, a, b) => clamp((u - a) / (b - a));
+const easeOut = k => 1 - Math.pow(1 - k, 3);
+const easeInOut = k => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const easeBack = k => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); };
+function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const hash = (i, j = 0) => { let h = (i * 374761393 + j * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+const col = k => C[k] || k;
+function rgba(hex, a) { hex = col(hex); const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const mss = T => `${Math.floor(T / 60)}:${String(Math.floor(T % 60)).padStart(2, '0')}`;
+
+function font(kind, size, weight = 400) { return `${weight} ${size}px ${F[kind]}`; }
+function text(str, x, y, o = {}) {
+  ctx.save();
+  ctx.font = font(o.kind || 'body', o.size || 32, o.weight || 400);
+  ctx.fillStyle = col(o.color || 'paper');
+  ctx.globalAlpha *= o.alpha ?? 1;
+  ctx.textAlign = o.align || 'left';
+  ctx.textBaseline = o.baseline || 'alphabetic';
+  if (o.spacing) ctx.letterSpacing = o.spacing + 'px';
+  ctx.fillText(str, x, y);
+  const w = ctx.measureText(str).width;
+  ctx.restore();
+  return w;
+}
+function measure(str, kind, size, weight, spacing = 0) {
+  ctx.save(); ctx.font = font(kind, size, weight); if (spacing) ctx.letterSpacing = spacing + 'px';
+  const w = ctx.measureText(str).width; ctx.restore(); return w;
+}
+// kinetic line: words rise in, staggered
+function kinetic(str, x, y, u, t0, o = {}) {
+  const words = str.split(' ');
+  const size = o.size || 96, weight = o.weight || 800, kind = o.kind || 'display';
+  const space = measure(' ', kind, size, weight);
+  let total = 0; const ws = words.map(w => { const m = measure(w, kind, size, weight); total += m; return m; });
+  total += space * (words.length - 1);
+  let cx = o.align === 'center' ? x - total / 2 : x;
+  words.forEach((w, i) => {
+    const k = easeOut(prog(u, t0 + i * (o.stagger ?? 0.07), t0 + i * (o.stagger ?? 0.07) + 0.45));
+    if (k > 0) text(w, cx, y + (1 - k) * (o.rise ?? 36), { kind, size, weight, color: o.color || 'paper', alpha: k * (o.alpha ?? 1) });
+    cx += ws[i] + space;
+  });
+  return total;
+}
+function wrap(str, x, y, maxW, lh, o) {
+  const words = str.split(' '); let line = '', yy = y;
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (measure(test, o.kind || 'body', o.size, o.weight || 400) > maxW && line) { text(line, x, yy, o); line = w; yy += lh; }
+    else line = test;
+  }
+  if (line) text(line, x, yy, o);
+}
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function eyebrow(str, x, y, a = 1) { text(str, x, y, { kind: 'mono', size: 24, weight: 600, color: 'hazard', spacing: 4, alpha: a }); }
+function grid(alpha, step = 64) {
+  ctx.save(); ctx.strokeStyle = rgba('line', alpha); ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = 0; x <= W; x += step) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); }
+  for (let y = 0; y <= H; y += step) { ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); }
+  ctx.stroke(); ctx.restore();
+}
+
+/* --- videos --- */
+const VIDS = {};
+for (const [id, src] of Object.entries(TIMELINE.videos)) {
+  const v = document.createElement('video');
+  v.src = src; v.muted = true; v.playsInline = true; v.preload = 'auto';
+  document.body.appendChild(v); VIDS[id] = v;
+}
+const vdur = id => { const v = VIDS[id]; return v && isFinite(v.duration) ? v.duration : 1e9; };
+// what each clip shows at scene time u: a list of { id, ct (video seconds), a (alpha) }
+function clipDraws(clip, u) {
+  const mid = clip.fps ? 0.5 / clip.fps : 0;         // aim at the middle of a frame so no frame repeats
+  if (clip.map === 'race') return [{ id: clip.video, ct: clamp(raceSimTime(u), 0, vdur(clip.video) - 0.06), a: 1 }];
+  if (clip.pair) {                                    // loop with a crossfade at the seam
+    const P = clip.len - clip.xfade, k = Math.floor(u / P), local = u - k * P;
+    const ids = [clip.video, clip.pair], out = [{ id: ids[k % 2], ct: local + mid, a: 1 }];
+    if (k > 0 && local < clip.xfade) out.push({ id: ids[(k + 1) % 2], ct: local + P + mid, a: 1 - easeInOut(local / clip.xfade) });
+    return out;
+  }
+  let ct = clip.from + u;
+  if (clip.loop) ct = clip.from + (u % clip.loop);
+  return [{ id: clip.video, ct: clamp(ct + mid, 0, vdur(clip.video) - 0.04), a: 1 }];
+}
+function seekTo(v, time) {
+  if (Math.abs(v.currentTime - time) < 1e-4 && v.readyState >= 2) return Promise.resolve();
+  return new Promise(res => { v.addEventListener('seeked', () => res(), { once: true }); v.currentTime = time; });
+}
+function drawVideo(id, sx, sy, sw, sh, dx, dy, dw, dh) {
+  const v = VIDS[id];
+  if (v.readyState >= 2) ctx.drawImage(v, sx, sy, sw, sh, dx, dy, dw, dh);
+  else { ctx.fillStyle = C.panel; ctx.fillRect(dx, dy, dw, dh); }
+}
+const activeScenes = t => TIMELINE.scenes.filter(s => t >= s.start && t < s.end);
+
+/* ===== scene: plaza ===== */
+const PEDS = (() => { const r = mulberry32(7); return Array.from({ length: 34 }, () => {
+  const ang = r() * Math.PI * 2, sp = 38 + r() * 55;
+  return { x: r() * W, y: r() * H, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp };
+}); })();
+const ROUTE = [[-80, 900], [520, 980], [760, 420], [1300, 640], [2000, 260]];
+function bez(k) { // Catmull-Rom through ROUTE
+  const n = ROUTE.length - 1, s = clamp(k) * n, i = Math.min(n - 1, Math.floor(s)), f = s - i;
+  const p0 = ROUTE[Math.max(0, i - 1)], p1 = ROUTE[i], p2 = ROUTE[i + 1], p3 = ROUTE[Math.min(n, i + 2)];
+  const cr = (a, b, c, d) => 0.5 * ((2 * b) + (-a + c) * f + (2 * a - 5 * b + 4 * c - d) * f * f + (-a + 3 * b - 3 * c + d) * f * f * f);
+  return [cr(p0[0], p1[0], p2[0], p3[0]), cr(p0[1], p1[1], p2[1], p3[1])];
+}
+function plazaState(t) {
+  const k = 0.12 + 0.62 * (t / 7);
+  const [rx, ry] = bez(k), [qx, qy] = bez(k + 0.004);
+  const hd = Math.atan2(qy - ry, qx - rx);
+  const peds = PEDS.map(p => {
+    let x = ((p.x + p.vx * t) % (W + 200) + W + 200) % (W + 200) - 100;
+    let y = ((p.y + p.vy * t) % (H + 200) + H + 200) % (H + 200) - 100;
+    const dx = x - rx, dy = y - ry, d = Math.hypot(dx, dy);
+    if (d < 170 && d > 0.01) { const push = (170 - d) * 0.85; x += dx / d * push; y += dy / d * push; }
+    return [x, y];
+  });
+  return { rx, ry, hd, peds };
+}
+function drawPlaza(u) {
+  const t = u, B = SC.plaza.beats;
+  grid(0.55);
+  ctx.save(); ctx.strokeStyle = rgba('hazard', 0.75); ctx.lineWidth = 4; ctx.setLineDash([18, 14]); ctx.lineDashOffset = -t * 60;
+  ctx.beginPath(); for (let i = 0; i <= 200; i++) { const [x, y] = bez(i / 200); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); ctx.restore();
+  const { rx, ry, hd, peds } = plazaState(t);
+  const R = 320, sweep = t * 3.2, hits = new Set();
+  ctx.save(); ctx.lineWidth = 1.5;
+  for (let i = 0; i < 64; i++) {               // lidar: 64 sectors over 270 degrees
+    const a = hd - Math.PI * 0.75 + (i / 63) * Math.PI * 1.5, dx = Math.cos(a), dy = Math.sin(a);
+    let best = R, who = -1;
+    peds.forEach(([px, py], j) => {
+      const ox = px - rx, oy = py - ry, b = ox * dx + oy * dy; if (b <= 0) return;
+      const c2 = ox * ox + oy * oy - b * b, r2 = 14 * 14; if (c2 > r2) return;
+      const d = b - Math.sqrt(r2 - c2); if (d < best) { best = d; who = j; }
+    });
+    if (who >= 0) hits.add(who);
+    const da = ((a - sweep) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI, glow = Math.exp(-da * da * 6);
+    ctx.strokeStyle = rgba('sensor', 0.16 + 0.5 * glow);
+    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx + dx * best, ry + dy * best); ctx.stroke();
+    ctx.fillStyle = rgba('sensor', who >= 0 ? 0.95 : 0.35 + 0.4 * glow);
+    ctx.fillRect(rx + dx * best - 2.5, ry + dy * best - 2.5, 5, 5);
+  }
+  ctx.restore();
+  peds.forEach(([x, y], j) => {
+    ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2);
+    ctx.fillStyle = hits.has(j) ? rgba('sensor', 0.95) : rgba('muted', 0.75); ctx.fill();
+    if (hits.has(j)) { ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI * 2); ctx.strokeStyle = rgba('sensor', 0.4); ctx.lineWidth = 2; ctx.stroke(); }
+  });
+  ctx.save(); ctx.translate(rx, ry); ctx.rotate(hd);
+  ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI * 2); ctx.fillStyle = rgba('hazard', 0.14); ctx.fill();
+  rr(-22, -14, 44, 28, 7); ctx.fillStyle = C.hazard; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = C.ink; ctx.stroke();
+  ctx.fillStyle = C.ink; ctx.fillRect(10, -5, 8, 10);
+  ctx.restore();
+  const g = ctx.createLinearGradient(0, 0, 0, 470); g.addColorStop(0, rgba('ink', 0.92)); g.addColorStop(1, rgba('ink', 0));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, 470);
+  kinetic(COPY.plaza.line1, 128, 230, u, B.line1, { size: 104, weight: 800 });
+  kinetic(COPY.plaza.line2, 128, 350, u, B.line2, { size: 104, weight: 800, color: 'hazard' });
+}
+
+/* ===== scene: crowd (the full race, fast-forwarded) ===== */
+function laneProgress(lane, T) {      // 0..1 along the route: 8 checkpoints, then back to the charger
+  const n = RACE.checkpoints + 1, knots = [[0, 0], ...lane.ck.map((t, k) => [t, (k + 1) / n])];
+  if (lane.done) knots.push([lane.done, 1]);
+  const stop = lane.fell && !lane.done ? lane.fell : Infinity, TT = Math.min(T, stop);
+  for (let i = 1; i < knots.length; i++) if (TT <= knots[i][0]) {
+    const [t0, p0] = knots[i - 1], [t1, p1] = knots[i]; return p0 + (p1 - p0) * (TT - t0) / (t1 - t0);
+  }
+  const [tl, pl] = knots[knots.length - 1];
+  if (pl >= 1) return 1;
+  const seg = tl / lane.ck.length;    // past the last known checkpoint: this lane's average pace, capped short of the next
+  return Math.min(pl + (TT - tl) / seg / n, pl + 0.92 / n);
+}
+function drawCrowd(u) {
+  const c = COPY.crowd, T = raceSimTime(u);
+  const since = Tev => u - raceSceneTime(Tev);         // reel seconds since a sim event (negative = not yet)
+  grid(0.3);
+  eyebrow(c.eyebrow, 80, 62, easeOut(prog(u, 0, 0.4)));
+  text(c.caption, 1840, 62, { size: 22, color: 'muted', align: 'right', alpha: easeOut(prog(u, 0.3, 0.7)) });
+  kinetic(c.title, 80, 124, u, 0.05, { size: 54, weight: 800, rise: 20 });
+  // clock, top right
+  text(mss(T), 1700, 124, { kind: 'mono', size: 48, weight: 600, align: 'right' });
+  text(`${RACE.speed}${c.speed}`, 1840, 124, { kind: 'mono', size: 32, weight: 600, color: 'hazard', align: 'right' });
+  const VX = 80, VY = 150, VW = 1056, VH = 264, GAP = 12, TX0 = VX + VW + 64, TX1 = 1812;
+  const finishers = RACE.lanes.filter(l => l.done).sort((a, b) => a.done - b.done);
+  RACE.lanes.forEach((lane, i) => {
+    let ly = VY + i * (VH + GAP), lx = 0;
+    const fell = lane.fell != null && since(lane.fell) >= 0, done = lane.done != null && since(lane.done) >= 0;
+    const fd = fell ? since(lane.fell) : 99, dd = done ? since(lane.done) : 99;
+    if (fd < 0.5) lx = 16 * Math.exp(-fd * 7) * Math.sin(fd * 70);      // quick shake on a fall
+    ctx.save(); ctx.translate(lx, 0);
+    // video lane (crop the 40 px status strip at the top of each lane)
+    rr(VX, ly, VW, VH, 12); ctx.save(); ctx.clip();
+    for (const d of clipDraws(SC.crowd.clips[0], u)) drawVideo(d.id, 0, i * 360 + 40, 1280, 320, VX, ly, VW, VH);
+    if (fell && !lane.parked) { ctx.fillStyle = rgba('alarm', 0.10 + 0.35 * Math.exp(-fd * 5)); ctx.fillRect(VX, ly, VW, VH); }
+    ctx.restore();
+    // border: idle line, lane colour once home, alarm once knocked over; flashes on each event
+    const flashDone = done ? Math.exp(-dd * 4) : 0, flashFell = fell ? Math.exp(-fd * 4) : 0;
+    const bc = fell && (!lane.parked || fd < 1.2) ? C.alarm : done ? lane.color : C.line;
+    rr(VX, ly, VW, VH, 12); ctx.lineWidth = (done || fell ? 4 : 2) + 12 * Math.max(flashDone, flashFell); ctx.strokeStyle = bc; ctx.stroke();
+    if (Math.max(flashDone, flashFell) > 0.02) {
+      ctx.save(); ctx.globalAlpha *= 0.5 * Math.max(flashDone, flashFell); ctx.shadowColor = bc; ctx.shadowBlur = 40;
+      rr(VX, ly, VW, VH, 12); ctx.lineWidth = 6; ctx.strokeStyle = bc; ctx.stroke(); ctx.restore();
+    }
+    // tracker
+    const n = RACE.checkpoints + 1, X = q => lerp(TX0, TX1, q), p = laneProgress(lane, T);
+    const passed = lane.ck.filter(tc => tc <= T).length, TY = ly + 100;
+    text(lane.name, TX0, ly + 42, { kind: 'display', size: 34, weight: 800, color: lane.color });
+    ctx.strokeStyle = C.line; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(TX0, TY); ctx.lineTo(TX1, TY); ctx.stroke();
+    ctx.strokeStyle = lane.color; ctx.beginPath(); ctx.moveTo(TX0, TY); ctx.lineTo(X(p), TY); ctx.stroke();
+    for (let q = 1; q <= RACE.checkpoints; q++) {
+      const hit = lane.ck[q - 1] != null && since(lane.ck[q - 1]) >= 0, pk = hit ? Math.exp(-since(lane.ck[q - 1]) * 6) : 0;
+      ctx.fillStyle = hit ? lane.color : C.line; ctx.fillRect(X(q / n) - 2 - pk * 2, TY - 16 - pk * 8, 4 + pk * 4, 32 + pk * 16);
+    }
+    // finish dot: an empty ring until the lane is home, then it pops and keeps breathing
+    ctx.beginPath(); ctx.arc(TX1, TY, 20, 0, Math.PI * 2); ctx.lineWidth = 4; ctx.strokeStyle = done ? lane.color : C.line; ctx.stroke();
+    if (done) {
+      const k = prog(dd, 0, 0.35), r = 20 * easeBack(k);
+      ctx.beginPath(); ctx.arc(TX1, TY, Math.max(0, r), 0, Math.PI * 2); ctx.fillStyle = lane.color; ctx.fill();
+      const ph = (dd % 1.1) / 1.1;
+      ctx.beginPath(); ctx.arc(TX1, TY, 22 + 30 * ph, 0, Math.PI * 2); ctx.strokeStyle = rgba(lane.color, 0.55 * (1 - ph)); ctx.lineWidth = 3; ctx.stroke();
+    } else {
+      const dc = fell ? C.alarm : lane.color;
+      ctx.beginPath(); ctx.arc(X(p), TY, 12, 0, Math.PI * 2); ctx.fillStyle = dc; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = C.ink; ctx.stroke();
+      if (fell) { const ph = (fd % 1.1) / 1.1; ctx.beginPath(); ctx.arc(X(p), TY, 14 + 28 * ph, 0, Math.PI * 2); ctx.strokeStyle = rgba('alarm', 0.6 * (1 - ph)); ctx.lineWidth = 3; ctx.stroke(); }
+    }
+    if (!(fell && lane.parked)) text(`${c.checkpoints} ${passed}/${RACE.checkpoints}`, TX0, ly + 146, { kind: 'mono', size: 22, color: 'muted' });
+    // rank label slams in, then its tag
+    const slam = (str, color, d, y, size) => {
+      const k = prog(d, 0, 0.32), s = lerp(1.9, 1, easeBack(k));
+      ctx.save(); ctx.translate(TX0, y); ctx.scale(s, s);
+      const w = text(str, 0, 0, { kind: 'display', size, weight: 900, color, alpha: clamp(k * 3) }); ctx.restore(); return w;
+    };
+    if (done) {
+      const rank = finishers.indexOf(lane);
+      const w = slam(`${c.ranks[rank]}  ${mss(lane.done)}`, lane.color, dd, ly + 218, 50);
+      const tag = rank === 0 ? c.firstTag : `+${(lane.done - finishers[0].done).toFixed(1)} ${c.behind}`;
+      text(tag, TX0 + w + 24 + (1 - easeOut(prog(dd, 0.12, 0.4))) * 30, ly + 216, { kind: 'mono', size: 26, color: 'muted', alpha: easeOut(prog(dd, 0.12, 0.4)) });
+    }
+    if (fell && !lane.parked) slam(`${c.fell} ${mss(lane.fell)}`, 'alarm', fd, ly + 218, 44);
+    if (fell && lane.parked) text(`${c.fellParked} ${mss(lane.fell)}`, TX0 + (1 - easeOut(prog(fd, 0, 0.25))) * 30, ly + 146, { kind: 'mono', size: 24, weight: 600, color: 'alarm', alpha: easeOut(prog(fd, 0, 0.25)) });
+    ctx.restore();
+  });
+  // during the stop: point at the planner's parked fall, the giveaway that the walkers ran on a fixed timetable
+  const st = SC.crowd.stop, ck = easeOut(prog(u, st.at, st.at + 0.06));
+  const pl = RACE.lanes.findIndex(l => l.parked);
+  if (ck > 0 && pl >= 0) {
+    const ly = VY + pl * (VH + GAP), bx = VX + 170, by = ly + VH - 58, label = c.lateWalker;
+    const tw = measure(label, 'mono', 24, 600), pad = 18;
+    ctx.save(); ctx.globalAlpha *= ck; ctx.translate(0, (1 - ck) * 16);
+    ctx.strokeStyle = C.alarm; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(bx + 60, by - 22); ctx.lineTo(bx + 120, ly + 96); ctx.stroke();
+    ctx.beginPath(); ctx.arc(bx + 120, ly + 96, 6 + 2 * Math.sin(u * 40), 0, Math.PI * 2); ctx.fillStyle = C.alarm; ctx.fill();
+    rr(bx, by - 26 - pad, tw + pad * 2, 48 + pad - 8, 10); ctx.fillStyle = rgba('ink', 0.9); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = C.alarm; ctx.stroke();
+    text(label, bx + pad, by + 4, { kind: 'mono', size: 24, weight: 600, color: 'paper' });
+    ctx.restore();
+  }
+  // master timeline
+  const MY = 978, M0 = 80, M1 = 1840, end = RACE_LAST + 10, MX = TT => lerp(M0, M1, TT / end);
+  ctx.strokeStyle = C.line; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(M0, MY); ctx.lineTo(M1, MY); ctx.stroke();
+  ctx.strokeStyle = rgba('paper', 0.85); ctx.beginPath(); ctx.moveTo(M0, MY); ctx.lineTo(MX(T), MY); ctx.stroke();
+  for (let m = 0; m * 60 <= end; m++) {
+    ctx.fillStyle = C.muted; ctx.fillRect(MX(m * 60) - 1, MY + 8, 2, 10);
+    text(`${m}:00`, MX(m * 60), MY + 34, { kind: 'mono', size: 18, color: 'muted', align: m ? 'center' : 'left' });
+  }
+  RACE.lanes.forEach(lane => {
+    if (lane.done && T >= lane.done) { ctx.beginPath(); ctx.arc(MX(lane.done), MY, 9, 0, Math.PI * 2); ctx.fillStyle = lane.color; ctx.fill(); }
+    if (lane.fell && T >= lane.fell) { ctx.fillStyle = C.alarm; ctx.save(); ctx.translate(MX(lane.fell), MY); ctx.rotate(Math.PI / 4); ctx.fillRect(-7, -7, 14, 14); ctx.restore(); }
+  });
+  ctx.fillStyle = C.hazard; ctx.fillRect(MX(T) - 2, MY - 18, 4, 36);
+}
+
+/* ===== scene: worlds ===== */
+const WG = { n: 64, x: 1000, y: 140, size: 792 };
+function drawWorlds(u) {
+  const c = COPY.worlds, B = SC.worlds.beats;
+  grid(0.25);
+  const cs = WG.size / WG.n, focus = [40 * cs + cs / 2, 24 * cs + cs / 2], center = [WG.size / 2, WG.size / 2];
+  const k = easeInOut(prog(u, B.zoom[0], B.zoom[1])), S = Math.pow(42, 1 - k);
+  const zc = [lerp(focus[0], center[0], k), lerp(focus[1], center[1], k)];
+  const toS = (px, py) => [WG.x + center[0] + (px - zc[0]) * S, WG.y + center[1] + (py - zc[1]) * S];
+  ctx.save(); ctx.beginPath(); ctx.rect(WG.x - 4, WG.y - 4, WG.size + 8, WG.size + 8); ctx.clip();
+  ctx.fillStyle = C.panel; ctx.fillRect(WG.x, WG.y, WG.size, WG.size);
+  const minI = Math.max(0, Math.floor((zc[0] - center[0] / S) / cs) - 1), maxI = Math.min(WG.n - 1, Math.ceil((zc[0] + center[0] / S) / cs) + 1);
+  const minJ = Math.max(0, Math.floor((zc[1] - center[1] / S) / cs) - 1), maxJ = Math.min(WG.n - 1, Math.ceil((zc[1] + center[1] / S) / cs) + 1);
+  const learn = lerp(0.12, 0.7, prog(u, 1, 6)), csS = cs * S;
+  for (let j = minJ; j <= maxJ; j++) for (let i = minI; i <= maxI; i++) {
+    const h1 = hash(i, j), h2 = hash(j + 101, i + 7);
+    const [sx, sy] = toS(i * cs, j * cs);
+    const P = 2.2 + h1 * 2.4, local = ((u + h2 * P) % P) / P, ep = Math.floor((u + h2 * P) / P);
+    if (csS > 6) { ctx.strokeStyle = rgba('line', 0.9); ctx.lineWidth = Math.max(1, S * 0.08); ctx.strokeRect(sx, sy, csS, csS); }
+    if (local > 0.86) {
+      const ok = hash(i * 31 + ep, j * 17 + ep) < learn;
+      ctx.fillStyle = rgba(ok ? 'sensor' : 'alarm', 0.75 * (1 - (local - 0.86) / 0.14));
+      ctx.fillRect(sx + 1, sy + 1, csS - 2, csS - 2);
+    }
+    const pr = Math.max(1.6, csS * 0.08);
+    for (let q = 0; q < 2; q++) {
+      const hq = hash(i * 7 + q, j * 13 + q);
+      const px = ((hq + local * (q ? 0.6 : -0.5)) % 1 + 1) % 1, py = 0.2 + 0.6 * hash(j * 3 + q, i * 5 + ep);
+      ctx.fillStyle = rgba('muted', 0.9); ctx.fillRect(sx + px * csS - pr, sy + py * csS - pr, pr * 2, pr * 2);
+    }
+    const rxk = 0.12 + 0.76 * local, ryk = 0.85 - 0.7 * local + 0.08 * Math.sin(local * 9 + h1 * 6), rs = Math.max(2.2, csS * 0.11);
+    ctx.fillStyle = C.hazard; ctx.fillRect(sx + rxk * csS - rs, sy + ryk * csS - rs, rs * 2, rs * 2);
+  }
+  ctx.restore();
+  ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.strokeRect(WG.x - 1, WG.y - 1, WG.size + 2, WG.size + 2);
+  text('64 × 64 = 4,096 simulated worlds', WG.x, WG.y + WG.size + 44, { kind: 'mono', size: 24, color: 'muted', alpha: easeOut(prog(u, B.zoom[1] - 0.2, B.zoom[1] + 0.3)) });
+  eyebrow(c.eyebrow, 128, 240, easeOut(prog(u, 0.1, 0.5)));
+  kinetic(c.line1, 128, 360, u, 0.2, { size: 120, weight: 900 });
+  kinetic(c.line2, 128, 490, u, 0.45, { size: 120, weight: 900, color: 'hazard' });
+  const ca = easeOut(prog(u, B.count[0] - 0.1, B.count[0] + 0.3));
+  if (u < B.done) {
+    text(fmt(c.steps * easeInOut(prog(u, B.count[0], B.count[1]))), 128, 680, { kind: 'mono', size: 72, weight: 600, alpha: ca });
+    text(c.stepsLabel, 128, 735, { size: 32, color: 'muted', alpha: ca });
+  } else {
+    const dk = easeBack(prog(u, B.done, B.done + 0.35));
+    ctx.save(); ctx.translate(128, 680); ctx.scale(0.8 + 0.2 * dk, 0.8 + 0.2 * dk);
+    text(c.done, 0, 0, { kind: 'mono', size: 72, weight: 600 }); ctx.restore();
+    text(c.sub, 128, 750, { kind: 'display', size: 44, weight: 700, color: 'sensor', alpha: easeOut(prog(u, B.sub, B.sub + 0.4)) });
+  }
+}
+
+/* ===== scene: reward receipt ===== */
+function drawReward(u) {
+  const c = COPY.reward, B = SC.reward.beats, sched = receiptSchedule();
+  grid(0.25);
+  const k = easeOut(prog(u, 0, 0.5));
+  const x = 160, w = 780, rowH = 72, h = 150 + c.rows.length * rowH + 90;
+  const y = 110 + (1 - k) * 120 + 8 * Math.sin(u * 1.7);          // the receipt floats gently
+  ctx.save(); ctx.globalAlpha *= k; ctx.translate(x + w / 2, y + h / 2); ctx.rotate(-0.012 + 0.006 * Math.sin(u * 1.3)); ctx.translate(-(x + w / 2), -(y + h / 2));
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + h);
+  for (let i = 0; i <= 26; i++) ctx.lineTo(x + w - i * (w / 26), y + h + (i % 2 ? 0 : -16));
+  ctx.closePath(); ctx.fillStyle = C.paper; ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 16; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  text(c.header, x + 48, y + 84, { kind: 'mono', size: 32, weight: 600, color: 'ink', spacing: 3 });
+  ctx.strokeStyle = rgba('ink', 0.5); ctx.setLineDash([8, 8]); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x + 48, y + 118); ctx.lineTo(x + w - 48, y + 118); ctx.stroke(); ctx.setLineDash([]);
+  c.rows.forEach(([name, val, end], i) => {
+    const [a, b] = sched[i]; if (u < a) return;
+    const ry = y + 176 + i * rowH, shown = name.slice(0, Math.ceil(name.length * prog(u, a, b)));
+    const nw = text(shown, x + 48, ry, { kind: 'mono', size: 32, color: 'ink' });
+    if (u < b) { ctx.fillStyle = C.ink; ctx.fillRect(x + 52 + nw, ry - 26, 16, 30); return; }   // typing cursor
+    const pk = easeBack(prog(u, b, b + 0.25)), vx = x + w - 48 - (end ? 96 : 0), vw = measure(val, 'mono', 32, 600);
+    ctx.fillStyle = rgba('ink', 0.35);
+    const dotsEnd = lerp(x + 48 + nw + 16, vx - vw - 16, easeOut(prog(u, b, b + 0.2)));
+    for (let d = x + 48 + nw + 16; d < dotsEnd; d += 14) ctx.fillRect(d, ry - 6, 3, 3);
+    ctx.save(); ctx.translate(vx, ry); ctx.scale(pk, pk);
+    text(val, 0, 0, { kind: 'mono', size: 32, weight: 600, color: val.startsWith('+') ? '#1F7A86' : '#B4472F', align: 'right', alpha: clamp(pk) });
+    ctx.restore();
+    if (end) { const ek = easeBack(prog(u, b + 0.08, b + 0.3)); ctx.save(); ctx.translate(x + w - 88, ry - 10); ctx.scale(ek, ek);
+      rr(-40, -20, 80, 40, 8); ctx.fillStyle = C.ink; ctx.fill(); text('END', 0, 9, { kind: 'mono', size: 22, weight: 600, align: 'center' }); ctx.restore(); }
+  });
+  const tEnd = sched[sched.length - 1][1];
+  text(c.footer, x + 48, y + h - 34, { kind: 'mono', size: 24, color: 'ink', alpha: 0.7 * prog(u, tEnd, tEnd + 0.3) });
+  ctx.restore();
+  c.statement.forEach((line, i) => kinetic(line, 1060, 420 + i * 120, u, B.statement + i * 0.22, { size: 104, weight: 900, color: i === 2 ? 'hazard' : 'paper' }));
+  text(c.sub, 1060, 790, { size: 32, color: 'muted', alpha: easeOut(prog(u, B.sub, B.sub + 0.4)) });
+}
+
+/* ===== scene: curves ===== */
+function drawCurves(u) {
+  const c = COPY.curves, B = SC.curves.beats;
+  grid(0.2);
+  eyebrow(c.eyebrow, 128, 140, easeOut(prog(u, 0.05, 0.4)));
+  kinetic(c.title, 128, 226, u, 0.1, { size: 76, weight: 800 });
+  text(c.sub, 128, 280, { size: 30, color: 'muted', alpha: easeOut(prog(u, 0.3, 0.7)) });
+  const X0 = 210, X1 = 1380, Y0 = 860, Y1 = 340, sx = h => lerp(X0, X1, h / 2), sy = v => lerp(Y0, Y1, v);
+  ctx.save(); ctx.globalAlpha *= easeOut(prog(u, 0.1, 0.5));
+  ctx.strokeStyle = C.line; ctx.lineWidth = 1.5;
+  [0, 0.25, 0.5, 0.75, 1].forEach(v => {
+    ctx.beginPath(); ctx.moveTo(X0, sy(v) + 0.5); ctx.lineTo(X1, sy(v) + 0.5); ctx.stroke();
+    text(Math.round(v * 100) + '%', X0 - 20, sy(v) + 8, { kind: 'mono', size: 24, color: 'muted', align: 'right' });
+  });
+  [0, 0.5, 1, 1.5, 2].forEach(hh => text(hh ? hh + ' h' : '0', sx(hh), Y0 + 44, { kind: 'mono', size: 24, color: 'muted', align: 'center' }));
+  text('wall-clock time', (X0 + X1) / 2, Y0 + 88, { size: 24, color: 'muted', align: 'center' });
+  ctx.restore();
+  const f = easeInOut(prog(u, B.draw[0], B.draw[1]));
+  ctx.save(); ctx.beginPath(); ctx.rect(X0 - 4, Y1 - 30, (X1 - X0 + 8) * f, Y0 - Y1 + 60); ctx.clip();
+  c.runs.forEach(r => {
+    ctx.beginPath(); CURVES[r.key].forEach(([hh, v], i) => { const px = sx(hh), py = sy(v); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    ctx.strokeStyle = col(r.color); ctx.lineWidth = r.key === 'legacy' ? 4 : 5; ctx.lineJoin = 'round'; ctx.stroke();
+  });
+  ctx.restore();
+  const head = r => { const pts = CURVES[r.key], hx = 2 * f; let v = pts[0][1]; for (const [hh, vv] of pts) { if (hh <= hx) v = vv; else break; } return [sx(Math.min(hx, pts[pts.length - 1][0])), sy(v)]; };
+  c.runs.forEach((r, i) => {
+    const [px, py] = head(r);
+    ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fillStyle = col(r.color); ctx.fill();
+    if (f >= 1) { const ph = ((u - B.draw[1] + i * 0.27) % 1.3) / 1.3;    // endpoints keep pulsing
+      ctx.beginPath(); ctx.arc(px, py, 9 + 26 * ph, 0, Math.PI * 2); ctx.strokeStyle = rgba(r.color, 0.7 * (1 - ph)); ctx.lineWidth = 3; ctx.stroke(); }
+  });
+  // labels ride in as the pens reach the end
+  const lk = easeOut(prog(u, B.draw[1] - 0.35, B.draw[1] + 0.2));
+  if (lk > 0) {
+    const ends = c.runs.map(r => ({ r, y: sy(CURVES[r.key][CURVES[r.key].length - 1][1]) })).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 50) ends[i].y = ends[i - 1].y + 50;
+    ends.forEach(e => {
+      ctx.save(); ctx.globalAlpha *= lk; ctx.translate((1 - lk) * -40, 0);
+      ctx.fillStyle = col(e.r.color); ctx.fillRect(X1 + 28, e.y - 4, 24, 8);
+      text(e.r.label, X1 + 64, e.y + 10, { size: 30, weight: 600, color: e.r.color });
+      ctx.restore();
+    });
+  }
+  text(c.note, 128, 996, { kind: 'mono', size: 24, color: 'muted', alpha: easeOut(prog(u, B.note, B.note + 0.4)) });
+}
+
+/* ===== scene: denominator ===== */
+function drawDenominator(u) {
+  const c = COPY.denominator, B = SC.denominator.beats;
+  grid(0.2);
+  eyebrow(c.eyebrow, 128, 140, easeOut(prog(u, 0, 0.3)));
+  const BX = 640, BW = 860, starts = [B.row1, B.row2, B.row3], ys = [250, 500, 750];
+  const focus = [1 - 0.45 * easeOut(prog(u, B.row2, B.row2 + 0.4)), 1, 1];
+  c.groups.forEach((g, gi) => {
+    const t0 = starts[gi], gy = ys[gi];
+    const lit = easeOut(prog(u, t0 - 0.1, t0 + 0.25));       // ghosted until its bars start
+    const a = lerp(0.32, 1, lit) * focus[gi];
+    text(g.title, 128, gy, { kind: 'display', size: 48, weight: 800, alpha: a });
+    g.rows.forEach(([label, val, color], i) => {
+      const ry = gy + 40 + i * 62;
+      text(label, 128, ry + 36, { kind: 'mono', size: 28, color: 'muted', alpha: a });
+      rr(BX, ry, BW, 46, 8); ctx.fillStyle = rgba('line', 0.35 + 0.3 * lit); ctx.fill();
+      const bk = easeOut(prog(u, t0 + i * 0.12, t0 + 1.0 + i * 0.12));
+      if (bk <= 0) return;
+      const bw = Math.max(6, BW * (val / g.max) * bk);
+      ctx.save(); ctx.globalAlpha *= focus[gi];
+      rr(BX, ry, bw, 46, 8); ctx.fillStyle = col(color); ctx.fill();
+      // a slow sheen keeps the filled bars alive
+      ctx.save(); rr(BX, ry, bw, 46, 8); ctx.clip();
+      const sx = BX - 200 + ((u * 260 + gi * 300 + i * 90) % (BW + 400));
+      const sg = ctx.createLinearGradient(sx, 0, sx + 160, 0);
+      sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,0.22)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sg; ctx.fillRect(sx, ry, 160, 46); ctx.restore();
+      const shown = g.unit === '%' ? (val * bk).toFixed(1) : Math.round(val * bk);
+      text(shown + g.unit, BX + bw + 18, ry + 36, { kind: 'mono', size: 32, weight: 600 });
+      ctx.restore();
+    });
+  });
+  // "A tie?" lands with overshoot while the first bars settle, and is struck through as the next bars grow
+  const tk = prog(u, B.tie, B.tie + 0.35);
+  if (tk > 0) {
+    ctx.save(); ctx.translate(1660, 320 + 4 * Math.sin(u * 2.2)); ctx.rotate(-0.06 + 0.12 * (1 - easeBack(tk))); const s = lerp(1.7, 1, easeBack(tk)); ctx.scale(s, s);
+    const tw = text(c.tie, 0, 0, { kind: 'display', size: 112, weight: 900, align: 'center', alpha: clamp(tk * 3) * focus[0] });
+    const sk = easeOut(prog(u, B.strike, B.strike + 0.35));
+    if (sk > 0) { ctx.strokeStyle = C.alarm; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-tw / 2 - 16, -36); ctx.lineTo(-tw / 2 - 16 + (tw + 32) * sk, -36); ctx.stroke(); }
+    ctx.restore();
+  }
+  const fl = prog(u, B.row2, B.row2 + 0.5);
+  if (fl > 0 && fl < 1) { ctx.fillStyle = rgba('alarm', 0.16 * (1 - fl)); ctx.fillRect(0, 0, W, H); }
+  kinetic(c.lesson, 128, 984, u, B.lesson, { size: 64, weight: 900, color: 'hazard' });
+}
+
+/* ===== scene: arm ===== */
+function stamp(cx, cy, k, struck, label) {
+  if (k <= 0) return;
+  const s = 1.9 - 0.9 * easeOut(k);
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.12); ctx.scale(s, s); ctx.globalAlpha *= clamp(k * 1.6);
+  const colr = struck ? C.alarm : C.sensor, tw = measure(label, 'display', 60, 900, 4);
+  rr(-tw / 2 - 26, -54, tw + 52, 84, 10); ctx.fillStyle = rgba('ink', 0.7); ctx.fill();
+  ctx.lineWidth = 6; ctx.strokeStyle = colr; ctx.stroke();
+  text(label, 0, 8, { kind: 'display', size: 60, weight: 900, color: colr, align: 'center', spacing: 4 });
+  ctx.restore();
+}
+function drawArm(u) {
+  const c = COPY.arm, B = SC.arm.beats;
+  grid(0.2);
+  eyebrow(c.eyebrow, 120, 120, easeOut(prog(u, 0, 0.4)));
+  kinetic(c.title, 120, 200, u, 0.05, { size: 72, weight: 800 });
+  const pw = 800, ph = 400, py = 250, xs = [120, 1000];
+  SC.arm.clips.forEach((clip, i) => {
+    rr(xs[i], py, pw, ph, 16); ctx.save(); ctx.clip();
+    for (const d of clipDraws(clip, u)) drawVideo(d.id, 0, 0, 512, 256, xs[i], py, pw, ph);
+    ctx.restore();
+    rr(xs[i], py, pw, ph, 16); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke();
+  });
+  const strike = prog(u, B.strike, B.strike + 0.3);
+  stamp(xs[0] + pw - 210, py + 90, prog(u, B.stampFake, B.stampFake + 0.25), strike > 0, c.stamp);
+  stamp(xs[1] + pw - 210, py + 90, prog(u, B.stampReal, B.stampReal + 0.25), false, c.stamp);
+  if (strike > 0) {
+    ctx.fillStyle = rgba('ink', 0.35 * easeOut(strike)); ctx.fillRect(xs[0], py, pw, ph);
+    ctx.save(); ctx.strokeStyle = C.alarm; ctx.lineWidth = 10; ctx.lineCap = 'round';
+    const sk = easeOut(strike); ctx.beginPath(); ctx.moveTo(xs[0] + 40, py + ph - 40); ctx.lineTo(xs[0] + 40 + (pw - 80) * sk, py + ph - 40 - (ph - 80) * sk); ctx.stroke();
+    ctx.restore();
+  }
+  text(c.fakeNote, xs[0], py + ph + 50, { size: 32, weight: 600, color: 'alarm', alpha: easeOut(prog(u, B.strike + 0.1, B.strike + 0.4)) });
+  text(c.realNote, xs[1], py + ph + 50, { size: 32, weight: 600, color: 'sensor', alpha: easeOut(prog(u, B.real, B.real + 0.3)) });
+  kinetic(c.line1, 120, 830, u, B.strike + 0.2, { size: 72, weight: 900 });
+  kinetic(c.line2, 120, 930, u, B.real, { size: 72, weight: 900, color: 'hazard' });
+  const glow = prog(u, B.real, B.real + 0.3);
+  if (glow > 0) { ctx.save(); ctx.strokeStyle = rgba('hazard', easeOut(glow) * (0.75 + 0.25 * Math.sin(u * 5))); ctx.lineWidth = 6; rr(xs[1] - 6, py - 6, pw + 12, ph + 12, 22); ctx.stroke(); ctx.restore(); }
+}
+
+/* ===== scene: imagine ===== */
+function drawImagine(u) {
+  const c = COPY.imagine;
+  grid(0.2);
+  eyebrow(c.eyebrow, 128, 250, easeOut(prog(u, 0, 0.35)));
+  c.title.forEach((line, i) => kinetic(line, 128, 370 + i * 100, u, 0.1 + i * 0.15, { size: 88, weight: 900, color: i === 2 ? 'hazard' : 'paper' }));
+  ctx.save(); ctx.globalAlpha *= easeOut(prog(u, 0.8, 1.2)); wrap(c.body, 128, 740, 600, 46, { size: 32, color: 'muted' }); ctx.restore();
+  const pw = 460, ph = 388, py = 330, xs = [860, 1360], draws = clipDraws(SC.imagine.clips[0], u);
+  [[c.real, 0, 'paper'], [c.imagined, 540, 'hazard']].forEach(([label, sy0, color], i) => {
+    const k = easeOut(prog(u, 0.1 + i * 0.15, 0.5 + i * 0.15)), yy = py + (1 - k) * 40;
+    ctx.save(); ctx.globalAlpha *= k;
+    text(label.toUpperCase(), xs[i], yy - 24, { kind: 'mono', size: 26, weight: 600, color, spacing: 3 });
+    rr(xs[i], yy, pw, ph, 14); ctx.save(); ctx.clip();
+    for (const d of draws) { ctx.save(); ctx.globalAlpha *= d.a; drawVideo(d.id, 0, sy0, 640, 540, xs[i], yy, pw, ph); ctx.restore(); }
+    ctx.restore();
+    rr(xs[i], yy, pw, ph, 14); ctx.strokeStyle = col(i ? 'hazard' : 'line'); ctx.lineWidth = i ? 4 : 2; ctx.stroke();
+    ctx.restore();
+  });
+  text(c.credit, 860, py + ph + 70, { kind: 'mono', size: 22, color: 'muted', alpha: easeOut(prog(u, 0.9, 1.3)) });
+}
+
+/* ===== scene: close ===== */
+function drawClose(u) {
+  const c = COPY.close;
+  for (let i = 0; i < 7; i++) {
+    const r = (u * 160 + i * 160) % 1120;
+    ctx.beginPath(); ctx.arc(W / 2, H / 2 - 40, r, 0, Math.PI * 2);
+    ctx.strokeStyle = rgba('sensor', 0.24 * (1 - r / 1120)); ctx.lineWidth = 2; ctx.stroke();
+  }
+  kinetic(c.line1, W / 2, 470, u, 0.2, { size: 156, weight: 900, align: 'center' });
+  kinetic(c.line2, W / 2, 630, u, 0.45, { size: 156, weight: 900, align: 'center', color: 'hazard', stagger: 0.12 });
+  text(c.sub, W / 2, 750, { size: 40, color: 'muted', align: 'center', alpha: easeOut(prog(u, 1.2, 1.6)) });
+  text(c.credit, W / 2, 900, { size: 22, color: 'muted', align: 'center', alpha: 0.85 * easeOut(prog(u, 1.6, 2.0)) });
+}
+
+const DRAW = { plaza: drawPlaza, crowd: drawCrowd, worlds: drawWorlds, reward: drawReward, curves: drawCurves,
+               denominator: drawDenominator, arm: drawArm, imagine: drawImagine, close: drawClose };
+
+// Each scene paints its own ground. The incoming scene crossfades in over the outgoing one with a small push;
+// every scene also pushes in slowly for its whole length, so nothing is ever perfectly still.
+function draw(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
+  const scenes = activeScenes(t), f = TIMELINE.fade, lastScene = TIMELINE.scenes[TIMELINE.scenes.length - 1];
+  scenes.forEach((s, idx) => {
+    const u = t - s.start;
+    const inK = s === TIMELINE.scenes[0] ? 1 : easeInOut(prog(u, 0, f));
+    const outK = s === lastScene ? 0 : prog(t, s.end - f, s.end);
+    const hk = s.stop ? prog(u, s.stop.at, s.stop.at + s.stop.hold) : 0;
+    const sc = 1 + (s.push ?? TIMELINE.push) * (u / s.len) + 0.012 * easeInOut(hk) + 0.035 * (1 - inK) + 0.03 * easeInOut(outK);
+    ctx.save();
+    ctx.globalAlpha = idx === 0 ? 1 : inK;
+    ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
+    ctx.translate(W / 2, H / 2); ctx.scale(sc, sc); ctx.translate(-W / 2, -H / 2);
+    DRAW[s.id](contentTime(s, u));
+    ctx.restore();
+  });
+  drawChapters(t);
+  const fo = prog(t, TIMELINE.duration - 0.8, TIMELINE.duration);     // final fade
+  if (fo > 0) { ctx.fillStyle = rgba('ink', fo); ctx.fillRect(0, 0, W, H); }
+}
+
+// Chapter line: always on (after the cold open), so the viewer can always see the reel is playing.
+function drawChapters(t) {
+  const ch = TIMELINE.chapters, a = easeOut(prog(t, ch.show, ch.show + 0.5)); if (a <= 0) return;
+  const S = TIMELINE.scenes, X0 = 80, X1 = 1840, Y = ch.y, gap = 6, D = TIMELINE.duration;
+  const segEnd = i => (i < S.length - 1 ? S[i + 1].start : D), X = tt => lerp(X0, X1, tt / D);
+  ctx.save(); ctx.globalAlpha = a;
+  S.forEach((s, i) => {
+    const x0 = X(s.start) + (i ? gap / 2 : 0), x1 = X(segEnd(i)) - (i < S.length - 1 ? gap / 2 : 0);
+    const cur = t >= s.start && t < segEnd(i), past = t >= segEnd(i);
+    rr(x0, Y, x1 - x0, 6, 3); ctx.fillStyle = past ? rgba('paper', 0.45) : rgba('line', 0.95); ctx.fill();
+    if (cur) { const k = (t - s.start) / (segEnd(i) - s.start); rr(x0, Y, Math.max(6, (x1 - x0) * k), 6, 3); ctx.fillStyle = C.hazard; ctx.fill(); }
+    if (s.chapter) text(s.chapter, x0, Y - 12, { kind: 'mono', size: 17, weight: cur ? 600 : 400, color: cur ? 'hazard' : 'muted', alpha: cur ? 1 : 0.75 });
+  });
+  TIMELINE.stops.forEach(st => {        // stop points: diamonds that pulse while their beat is held
+    const on = t >= st.from && t < st.to, ph = on ? 0.5 + 0.5 * Math.sin((t - st.from) * 9) : 0, r = 6 + 3 * ph;
+    ctx.save(); ctx.translate(X(st.t), Y - 4); ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = on ? C.hazard : t > st.to ? rgba('paper', 0.85) : C.muted; ctx.fillRect(-r, -r, 2 * r, 2 * r);
+    ctx.lineWidth = 2; ctx.strokeStyle = C.ink; ctx.strokeRect(-r, -r, 2 * r, 2 * r); ctx.restore();
+    if (on) { ctx.beginPath(); ctx.arc(X(st.t), Y - 4, 12 + 16 * ((t - st.from) % 0.7) / 0.7, 0, Math.PI * 2);
+      ctx.strokeStyle = rgba('hazard', 0.6 * (1 - ((t - st.from) % 0.7) / 0.7)); ctx.lineWidth = 2; ctx.stroke(); }
+  });
+  const px = X(t);
+  ctx.beginPath(); ctx.arc(px, Y + 3, 7, 0, Math.PI * 2); ctx.fillStyle = C.paper; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = C.ink; ctx.stroke();
+  ctx.restore();
+}
+
+/* --- deterministic render API (render.mjs) --- */
+function sceneDraws(t) {
+  const out = [];
+  for (const s of activeScenes(t)) for (const clip of (s.clips || [])) out.push(...clipDraws(clip, contentTime(s, t - s.start)));
+  return out;
+}
+window.renderAt = async function (t) {
+  await Promise.all(sceneDraws(t).map(d => seekTo(VIDS[d.id], d.ct)));
+  draw(t);
+};
+window.TIMELINE = TIMELINE;
+window.reelReady = (async () => {
+  const loads = [['display', 900], ['display', 800], ['display', 700], ['body', 400], ['body', 600], ['mono', 400], ['mono', 600]]
+    .map(([k, w]) => document.fonts.load(font(k, 64, w)).catch(() => {}));
+  await Promise.all(loads); await document.fonts.ready;
+  await Promise.all(Object.values(VIDS).map(v => v.readyState >= 2 ? 0 : new Promise(r => { v.addEventListener('loadeddata', r, { once: true }); v.addEventListener('error', r, { once: true }); })));
+  return true;
+})();
+
+/* --- live player (normal browser): videos stay paused and are seeked to the timeline --- */
+if (!RENDER) {
+  const play = document.getElementById('play'), scrub = document.getElementById('scrub'), timeEl = document.getElementById('time');
+  const card = document.getElementById('card'), autostop = document.getElementById('autostop');
+  scrub.max = TIMELINE.duration;
+  for (const st of TIMELINE.stops) {     // stop diamonds on the scrubber
+    const m = document.createElement('span'); m.className = 'stopmark'; m.title = st.title;
+    m.style.left = `calc(8px + (100% - 16px) * ${st.t / TIMELINE.duration})`; document.getElementById('track').appendChild(m);
+  }
+  let t = 0, playing = false, last = null;
+  function showCard(st) { card.hidden = !st; if (st) { document.getElementById('cardTitle').textContent = st.title; document.getElementById('cardWhy').textContent = st.why; } }
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function syncVideos() {
+    for (const d of sceneDraws(t)) { const v = VIDS[d.id]; if (!v.seeking && Math.abs(v.currentTime - d.ct) > 0.02) v.currentTime = d.ct; }
+  }
+  function ui() { scrub.value = t; timeEl.textContent = `${t.toFixed(2)} / ${TIMELINE.duration.toFixed(2)}`; play.textContent = playing ? 'Pause' : 'Play'; }
+  function frame(now) {
+    if (playing) {
+      const prev = t;
+      if (last != null) t += (now - last) / 1000;
+      const hit = autostop.checked && TIMELINE.stops.find(st => prev < st.t && t >= st.t);
+      if (hit) { t = hit.t; playing = false; showCard(hit); }
+      if (t >= TIMELINE.duration) { t = TIMELINE.duration - 0.001; playing = false; }
+    }
+    last = now; syncVideos(); draw(t); ui();
+    requestAnimationFrame(frame);
+  }
+  function toggle() { if (t >= TIMELINE.duration - 0.01) t = 0; playing = !playing; last = null; if (playing) { showCard(null); t += 0.001; } }
+  play.addEventListener('click', toggle);
+  scrub.addEventListener('input', () => { t = parseFloat(scrub.value); showCard(null); });
+  addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); toggle(); }
+    else if (e.code === 'ArrowRight') t = Math.min(TIMELINE.duration - 0.001, t + (e.shiftKey ? 0.1 : 2));
+    else if (e.code === 'ArrowLeft') t = Math.max(0, t - (e.shiftKey ? 0.1 : 2));
+    else if (e.code === 'Home') t = 0;
+  });
+  window.reelReady.then(() => { if (reduce) t = TIMELINE.still; requestAnimationFrame(frame); });
+}
+</script>
+</body>
+</html>

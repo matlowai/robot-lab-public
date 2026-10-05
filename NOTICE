@@ -9,3 +9,6 @@ This code builds on, but does not include, third-party software:
 - The FLUX 3 Action inference code is Apache-2.0; the FLUX 3 Action model weights are under the
   FLUX Kommunity License (non-commercial) and are NOT included or required by this repository's license.
 No model weights, datasets or third-party assets are included.
+
+Exception: media files listed in docs/talk/MEDIA-LICENSE.md are FLUX 3 Action outputs under the FLUX
+Kommunity License (non-commercial). They are not licensed under Apache-2.0.

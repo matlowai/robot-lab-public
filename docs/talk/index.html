@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Machines Among Us</title>
+<meta name="description" content="Robot learning in simulation: a talk, an interactive field guide and an opening reel.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Landing: one column, the reel as the hero, then the two ways in. Same tokens as the deck and field guide. */
+:root{
+  --ink:#0E1724; --panel:#152234; --line:#26364D; --paper:#EEF1F4; --muted:#9AA8BA;
+  --hazard:#F2B33D; --sensor:#5CC8D6; --alarm:#E8664A;
+  --display:'Archivo','Arial Narrow',Arial,sans-serif; --body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--ink:#F3F5F7;--panel:#FFFFFF;--line:#D5DCE5;--paper:#0E1724;--muted:#4D5B6E;--hazard:#B97A06;--sensor:#16808E;color-scheme:light}}
+:root[data-theme="light"]{--ink:#F3F5F7;--panel:#FFFFFF;--line:#D5DCE5;--paper:#0E1724;--muted:#4D5B6E;--hazard:#B97A06;--sensor:#16808E;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ink);color:var(--paper);font:17px/1.55 var(--body);padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:36px;padding-top:max(40px,env(safe-area-inset-top,0px))}
+.eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--hazard);margin:0}
+h1{font-family:var(--display);font-stretch:112%;font-weight:850;font-size:clamp(40px,7vw,84px);line-height:1;margin:8px 0 0;text-wrap:balance}
+.lede{color:var(--muted);font-size:clamp(17px,2vw,20px);max-width:62ch;margin:14px 0 0}
+.reel{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000}
+.reel video{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.ways{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:720px){.ways{grid-template-columns:1fr}}
+.way{display:flex;flex-direction:column;gap:10px;padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:inherit;text-decoration:none;min-width:0;transition:border-color .2s,transform .2s}
+.way:hover,.way:focus-visible{border-color:var(--hazard);transform:translateY(-2px)}
+.way:focus-visible{outline:2px solid var(--hazard);outline-offset:3px}
+.way .k{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--sensor)}
+.way h2{font-family:var(--display);font-stretch:108%;font-size:28px;line-height:1.1;margin:0}
+.way p{margin:0;color:var(--muted)}
+.way .go{font-family:var(--mono);font-size:14px;color:var(--paper);margin-top:auto}
+.more{display:flex;flex-wrap:wrap;gap:10px 24px;font-size:15px;color:var(--muted)}
+.more a{color:var(--paper)}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}
+@media (prefers-reduced-motion:reduce){.way{transition:none}.way:hover{transform:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <p class="eyebrow">Robot learning in simulation</p>
+    <h1>Machines Among Us</h1>
+    <p class="lede">What we taught a walking robot and a robot arm in simulation, what broke, and why organizations that run fleets, floors or fields should be building this expertise now.</p>
+  </header>
+
+  <div class="reelp" style="--rlp-fs:16px" data-src="media/opening_reel.mp4" data-poster="media/opening_reel_still.jpg"></div>
+
+  <div class="ways">
+    <a class="way" href="deck.html">
+      <span class="k">Talk · 28 slides</span>
+      <h2>The slides</h2>
+      <p>Videos, real training numbers and the failures. Arrow keys to move, N for speaker notes, G for the grid, F for fullscreen.</p>
+      <span class="go">Open the slides →</span>
+    </a>
+    <a class="way" href="explorer.html">
+      <span class="k">Interactive</span>
+      <h2>The field guide</h2>
+      <p>Train a policy in your browser, design a reward and watch it get gamed, replay the full robot race, and read it all for your role.</p>
+      <span class="go">Open the field guide →</span>
+    </a>
+  </div>
+
+  <p class="more"><span>Also:</span><a href="reel/reel.html">The reel as a live, scrubbable page</a><a href="explorer.html#race">The full three-robot race</a><a href="explorer.html#plaza">Train your own policy</a></p>
+
+  <footer>Simulation: NVIDIA Isaac Sim and Isaac Lab, with the Spot robot asset. Model: FLUX 3 Action, Black Forest Labs (FLUX Kommunity License). Data: DROID dataset (CC BY 4.0). Arm: SO-101 open hardware with LeRobot.</footer>
+</main>
+<script src="reel/chapters.js"></script>
+<script src="reelplayer.js"></script>
+<script>if(window.ReelPlayer)ReelPlayer.mountAll();</script>
+</body>
+</html>

@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Machines Among Us</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one 1920x1080 stage scaled to the window; slides stacked and cross-faded; notes drawer at the bottom. */
+:root{
+  --ink:#0E1724; --panel:#152234; --line:#26364D; --paper:#EEF1F4; --muted:#9AA8BA;
+  --hazard:#F2B33D; --sensor:#5CC8D6; --alarm:#E8664A;
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'Instrument Sans','Segoe UI',Helvetica,Arial,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#070C14;color:var(--paper);font-family:var(--body);overflow:hidden}
+#viewport{position:fixed;inset:0;display:grid;place-items:center}
+#stage{position:relative;width:1920px;height:1080px;transform-origin:center center;background:var(--ink);overflow:hidden;box-shadow:0 0 0 1px #1b2840}
+.slide{position:absolute;inset:0;padding:112px 128px 150px;display:flex;flex-direction:column;gap:40px;
+  opacity:0;visibility:hidden;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease,visibility 0s linear .5s;background:var(--ink)}
+.slide.active{opacity:1;visibility:visible;transform:none;transition:opacity .5s ease,transform .5s ease}
+.slide.alt{background:var(--panel)}
+.slide.hz{background:var(--hazard);color:var(--ink)}
+.notes{display:none}
+/* staged builds */
+.slide.active .b{animation:rise .6s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i,0) * 140ms + 150ms)}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.slide,.slide.active{transition:none;transform:none}.slide.active .b{animation:none}.scan-sweep{animation:none!important}}
+/* type scale: 132 / 84 / 52 / 36 / 28 / 24 */
+.eyebrow{font-family:var(--mono);font-size:24px;letter-spacing:4px;text-transform:uppercase;color:var(--hazard);margin:0}
+.hz .eyebrow{color:var(--ink)}
+h1{font-family:var(--display);font-stretch:118%;font-weight:850;font-size:132px;line-height:.98;margin:0;letter-spacing:-2px;text-wrap:balance}
+h2{font-family:var(--display);font-stretch:112%;font-weight:800;font-size:84px;line-height:1.02;margin:0;letter-spacing:-1px;text-wrap:balance}
+h3{font-family:var(--display);font-stretch:105%;font-weight:700;font-size:40px;line-height:1.12;margin:0}
+p,li{font-size:36px;line-height:1.38;margin:0}
+.lede{font-size:44px;line-height:1.3;color:var(--muted);max-width:1500px}
+.hz .lede{color:#3a2c0d}
+.small{font-size:28px;line-height:1.4;color:var(--muted)}
+.tiny{font-size:24px;line-height:1.4;color:var(--muted)}
+.mono{font-family:var(--mono)}
+.hl{color:var(--hazard)} .sn{color:var(--sensor)} .al{color:var(--alarm)}
+.row{display:flex;gap:40px;min-width:0}
+.col{display:flex;flex-direction:column;gap:24px;min-width:0}
+.grow{flex:1}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:40px;display:flex;flex-direction:column;gap:16px}
+.alt .card{background:var(--ink)}
+.big{font-family:var(--display);font-stretch:110%;font-weight:850;font-size:132px;line-height:.95;letter-spacing:-2px}
+.tag{display:inline-block;font-family:var(--mono);font-size:24px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.tag.hl{border-color:var(--hazard);color:var(--hazard)} .tag.sn{border-color:var(--sensor);color:var(--sensor)} .tag.al{border-color:var(--alarm);color:var(--alarm)}
+figure{margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
+figcaption{font-size:24px;color:var(--muted);font-family:var(--mono)}
+video,img.m{display:block;width:100%;border-radius:12px;background:#000;border:1px solid var(--line);cursor:pointer}
+.vlab{position:relative}
+.vlab span{position:absolute;top:14px;font-family:var(--mono);font-size:22px;background:rgba(14,23,36,.82);padding:6px 12px;border-radius:8px}
+.foot{position:absolute;left:128px;right:128px;bottom:56px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:22px;color:var(--muted)}
+.hz .foot{color:#4a3a14}
+a.xl{color:var(--sensor);text-decoration:none;border-bottom:2px solid rgba(92,200,214,.4)}
+.hz a.xl{color:var(--ink);border-color:var(--ink)}
+table.t{border-collapse:collapse;width:100%;font-size:32px}
+table.t th{font-family:var(--mono);font-size:24px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:left;padding:14px 18px;border-bottom:2px solid var(--line);font-weight:600}
+table.t td{padding:16px 18px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+table.t td.n,table.t th.n{text-align:right;font-family:var(--mono)}
+table.t tr.win td{background:rgba(242,179,61,.08)}
+.bad{color:var(--alarm);font-weight:700}
+/* layer stack */
+.layer{display:flex;align-items:center;gap:36px;padding:24px 44px;border-radius:18px;border:1px solid var(--line);background:var(--panel)}
+.layer .k{font-family:var(--mono);font-size:24px;color:var(--muted);width:220px;flex:none}
+.layer.ours{border:2px solid var(--hazard);background:rgba(242,179,61,.07)}
+.arrowdown{height:24px;display:flex;justify-content:center}
+.arrowdown i{width:3px;background:var(--line);height:100%;position:relative}
+/* timeline */
+.tl{display:grid;grid-template-columns:repeat(5,1fr);gap:20px}
+.tl .card{padding:30px;gap:12px}
+.tl .v{font-family:var(--display);font-weight:850;font-size:56px;font-stretch:115%}
+.tl p{font-size:26px}
+/* industries grid */
+.ig{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.ig .card{padding:30px;gap:10px}
+.ig h3{font-size:32px}
+.ig p{font-size:24px;color:var(--muted)}
+/* title scan */
+.scan{position:absolute;right:-260px;top:50%;width:1100px;height:1100px;transform:translateY(-50%);opacity:.9;pointer-events:none}
+.scan-sweep{transform-origin:550px 550px;animation:sweep 6s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+/* chrome */
+#bar{position:fixed;left:0;top:0;height:4px;background:var(--hazard);width:0;transition:width .3s ease;z-index:20}
+#count{position:fixed;right:18px;bottom:14px;font-family:var(--mono);font-size:13px;color:#6b7a8f;z-index:20;user-select:none}
+#notes{position:fixed;left:0;right:0;bottom:0;max-height:42vh;overflow:auto;background:rgba(10,17,27,.97);border-top:2px solid var(--hazard);padding:18px 28px 28px;z-index:30;font-size:17px;line-height:1.55;color:var(--paper);transform:translateY(105%);transition:transform .25s ease}
+#notes.open{transform:none}
+#notes h4{margin:0 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--hazard)}
+#notes p{font-size:17px;line-height:1.55;margin:0 0 8px;max-width:1100px}
+#notes b{color:var(--sensor)}
+#help{position:fixed;left:18px;bottom:14px;font-family:var(--mono);font-size:13px;color:#6b7a8f;z-index:20;user-select:none}
+/* grid overview */
+body.grid{overflow:auto}
+body.grid #viewport{position:static;display:block;padding:24px}
+body.grid #stage{transform:none!important;width:auto;height:auto;background:none;box-shadow:none;overflow:visible;display:grid;grid-template-columns:repeat(auto-fill,minmax(384px,1fr));gap:18px}
+body.grid .slide{position:relative;inset:auto;opacity:1;visibility:visible;transform:none;transition:none;width:1920px;height:1080px;zoom:.2;cursor:pointer;outline:6px solid transparent}
+body.grid .slide.active{outline-color:var(--hazard)}
+body.grid .slide .b{animation:none}
+body.grid #notes,body.grid #bar{display:none}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="viewport"><div id="stage">
+
+<!-- 1 -->
+<section class="slide" style="justify-content:center;gap:48px">
+  <svg class="scan" viewBox="0 0 1100 1100" aria-hidden="true">
+    <defs><radialGradient id="sg" cx="0" cy="0" r="1"><stop offset="0" stop-color="#5CC8D6" stop-opacity=".35"/><stop offset="1" stop-color="#5CC8D6" stop-opacity="0"/></radialGradient></defs>
+    <g fill="none" stroke="#26364D" stroke-width="2"><circle cx="550" cy="550" r="120"/><circle cx="550" cy="550" r="240"/><circle cx="550" cy="550" r="360"/><circle cx="550" cy="550" r="480"/></g>
+    <g class="scan-sweep"><path d="M550 550 L1030 550 A480 480 0 0 0 889 211 Z" fill="url(#sg)"/></g>
+    <g fill="#F2B33D"><circle cx="760" cy="420" r="9"/><circle cx="430" cy="300" r="9"/><circle cx="380" cy="700" r="9"/><circle cx="700" cy="820" r="9"/></g>
+    <rect x="532" y="530" width="36" height="40" rx="6" fill="#EEF1F4"/>
+  </svg>
+  <p class="eyebrow b" style="--i:0">Robot learning in simulation</p>
+  <h1 class="b" style="--i:1;max-width:1250px">Machines among us</h1>
+  <p class="lede b" style="--i:2;max-width:1150px">What we taught a walking robot and a robot arm, what broke, and why every large organization needs people who understand this now.</p>
+  <div class="foot"><span>Field notes from a one-workstation robot lab</span><span>2026</span></div>
+  <aside class="notes">
+    <p>Open with the promise: real videos, real numbers, including the failures. Everything in this talk ran on one desktop workstation in a few weeks.</p>
+    <p><b>Exec:</b> you'll leave with a clear sense of what is real today, what isn't, and why to invest in people now. <b>Beginner:</b> no math needed; every idea has a video. <b>Agent builder:</b> you already know half of this, you just call it tools and evals. <b>LLM trainer:</b> the training algorithm is one you already use.</p>
+    <p>Keys: arrows to move, N for notes, G for the grid, F for fullscreen. The companion interactive page is explorer.html.</p>
+  </aside>
+</section>
+
+<!-- 0: opening reel (talk/reel/reel.html renders it; plays with sound once a key has been pressed) -->
+<section class="slide" style="padding:28px 120px 40px;justify-content:flex-start;align-items:center;gap:0;background:var(--ink)">
+  <div class="reelp" style="width:1260px;--rlp-fs:21px" data-src="media/opening_reel.mp4" data-poster="media/opening_reel_still.jpg"></div>
+  <aside class="notes">
+    <p>Press → once from the title card to land here; the reel starts with sound. With "Pause at key moments" on, it stops at each diamond on its timeline and shows a card saying why: talk to it, then press → or Space to continue. Turn the toggle off to play straight through. Once the reel has ended, → goes to the next slide. If the room has no audio, press "Sound on" to mute it.</p>
+    <p>Don't narrate the first pass. Let it land, then say: "Everything you just saw is real data from one workstation, including the failures. Let's take it apart."</p>
+  </aside>
+</section>
+
+<!-- 2 -->
+<section class="slide" style="gap:28px">
+  <p class="eyebrow b" style="--i:0">Same seed, same walkers, three brains</p>
+  <h2 class="b" style="--i:1">Three robots, one patrol, full run</h2>
+  <div class="race b" style="--i:2;--rp-h:560px;--rp-fs:26px" data-src="media/race_seed21.mp4" data-poster="media/race_seed21_still.jpg" data-rate="8"></div>
+  <aside class="notes">
+    <p>This is the full run, playing at 8x; it takes about 45 seconds. Use the speed buttons or "Jump to the finish" if time is short. Three copies of the same compound, same random seed: top has no avoidance, middle is a planner a person wrote by hand, bottom is a policy that learned by trial and error. Each lane's tracker shows its checkpoints; a dot pops when a robot finishes, a red diamond when it gets knocked over.</p>
+    <p>How it ends: the learned policy finishes first, at 4:52. The planner finishes at 5:02. The robot with no avoidance gets knocked over at 4:55 with 7 of 8 checkpoints done.</p>
+    <p>Let the race play to the end: the lesson card appears over the trackers after the last event. Then go to the next slide, which is the lesson in full: the walkers were on a timetable fitted to the slow robot, so the two faster robots never faced the test. This learned policy is also the early one, trained against simple straight-line walkers.</p>
+    <p><b>Exec:</b> the point is that we can stage the same hard moment as many times as we want and compare fairly. <b>Beginner:</b> nobody programmed the bottom robot's moves. <b>Agent builder:</b> an eval with three agents on an identical, replayable task, and a reminder to look at the whole trace, not the last screen. <b>LLM trainer:</b> same lesson as judging a model on the tail of one transcript.</p>
+  </aside>
+</section>
+
+<!-- 2b: the race's lesson -->
+<section class="slide alt" style="gap:36px">
+  <p class="eyebrow b" style="--i:0">What that race really tested</p>
+  <h2 class="b" style="--i:1">The test was timed to the slow robot</h2>
+  <div class="row b" style="--i:2;gap:56px;align-items:flex-start">
+    <div class="col" style="width:880px;flex:none;gap:14px">
+      <img class="m" src="media/parked_knocked.jpg" alt="Planner lane at 5:14: patrol succeeded, 8 of 8 checkpoints, robot parked at the charger, a walker 0.12 m away knocks it over" style="width:880px;height:248px;object-fit:cover">
+      <p class="tiny">5:14 · patrol done, 8 of 8, parked · nearest walker 0.12 m</p>
+    </div>
+    <div class="col grow" style="gap:22px">
+      <p class="small"><b>The walkers kept a fixed timetable</b>, fitted to the robot with no avoidance.</p>
+      <p class="small"><b>The two smarter robots ran ahead.</b> They passed every encounter before its walker arrived, so they never faced the test.</p>
+      <p class="small"><b>The only contacts were late walkers</b> reaching the charger after the robots had parked. One knocked the parked planner over.</p>
+    </div>
+  </div>
+  <p class="lede b" style="--i:3;color:var(--hazard);max-width:1660px">If the test doesn't react to the system under test, a faster system skips it. We rebuilt the crowd so pedestrians react to whichever robot is in front of them.</p>
+  <aside class="notes">
+    <p>This is the lesson of the race, and it's the most transferable one in the talk. The walkers in that run were "book readers" on a timetable, and the timetable had been fitted to the slow robot with no avoidance. The planner and the learned policy turn while they walk, so they ran 30 to 40 seconds ahead by the last legs. They reached every encounter point before the walker meant to test them, so they never got tested. The only contacts in their runs were late walkers arriving at the charger after the robot had parked; one of them knocked the parked planner over at 5:14.</p>
+    <p>Every planner-versus-learned-policy comparison before we noticed this was confounded. The fix was closed-loop pedestrians: they see the robot, pick an intercept and react to whichever robot is actually in front of them, so every controller gets the same exposure. That's the crowd behind the numbers on the next slides.</p>
+    <p>We found it by watching the whole run. The last 30 seconds alone made the learned policy look stuck; it had simply finished first and parked.</p>
+    <p><b>Exec:</b> a scripted test that doesn't react to the system you're testing can make a better system look worse, or a worse one look safe. Ask any vendor whether their scenarios react to the system under test. <b>Beginner:</b> it's like a driving test where the hazards are on a fixed clock: a faster driver gets past before they appear. <b>Agent builder:</b> same as a benchmark with fixed timing or fixed tool outputs that a faster or different agent sidesteps; make the environment respond to the agent. <b>LLM trainer:</b> a static eval set that the new model routes around isn't measuring it; you need adversarial, reactive evals.</p>
+  </aside>
+</section>
+
+<!-- 3 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">What changed</p>
+  <h2 class="b" style="--i:1">The tools went open, and the cost fell to one desk</h2>
+  <div class="row grow" style="align-items:stretch">
+    <div class="card grow b" style="--i:2"><span class="big hl">7B</span><h3>Open action models</h3><p class="small">Foundation models that output motor commands. FLUX 3 Action predicts a robot's next moves and the video of what will happen.</p></div>
+    <div class="card grow b" style="--i:3"><span class="big sn">4,096</span><h3>Parallel worlds</h3><p class="small">Open GPU simulators (Isaac Lab) run thousands of deterministic copies of a world at once.</p></div>
+    <div class="card grow b" style="--i:4"><span class="big">2 h</span><h3>2.1 billion steps</h3><p class="small">One training run, one workstation GPU, about 290,000 simulated steps per second.</p></div>
+  </div>
+  <aside class="notes">
+    <p>Three shifts. Models: action foundation models are now downloadable and fine-tunable, the way language models were a few years ago. Simulators: GPU physics runs thousands of worlds in parallel and replays them exactly. Cost: our steering policy saw about 2.1 billion steps of experience in two hours on one card.</p>
+    <p><b>Exec:</b> this is the moment the barrier to experimentation dropped from a research lab to a single team. <b>LLM trainer:</b> 4,096 environments is your rollout batch; the simulator is your data generator. <b>Beginner:</b> 2 billion steps is roughly 6 years of a robot walking around, compressed into an afternoon.</p>
+  </aside>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">The stack</p>
+  <h2 class="b" style="--i:1">Three brains, stacked. We trained the middle one.</h2>
+  <div class="col" style="gap:0;max-width:1500px">
+    <div class="layer b" style="--i:2"><span class="k">MISSION</span><div class="col" style="gap:4px"><h3>Where to go, what to report</h3><p class="small">Waypoints and event rules. Written by people, or an LLM agent.</p></div></div>
+    <div class="arrowdown b" style="--i:2"><i></i></div>
+    <div class="layer ours b" style="--i:3"><span class="k hl">SKILL · OURS</span><div class="col" style="gap:4px"><h3>How to get past people</h3><p class="small">Learned with reinforcement learning. Reads lidar, outputs speed and turn ten times a second.</p></div></div>
+    <div class="arrowdown b" style="--i:3"><i></i></div>
+    <div class="layer b" style="--i:4"><span class="k">MOTOR</span><div class="col" style="gap:4px"><h3>How to walk</h3><p class="small">NVIDIA's pretrained Spot locomotion policy. We did not train the legs.</p></div></div>
+  </div>
+  <p class="small b" style="--i:5">Play with it: <a class="xl" href="explorer.html#stack">explorer · the stack</a></p>
+  <aside class="notes">
+    <p>Be explicit: the walking you see is NVIDIA's pretrained locomotion policy that ships with Isaac Lab. What we trained is the steering layer that tells the legs how fast to go and where to turn. That split is how most real robots are built: high-level intent, a learned skill, a low-level controller.</p>
+    <p><b>Agent builder:</b> this is an agent calling tools. The mission layer is your planner, the skill is a specialised sub-agent, and the legs are a tool with a narrow API: three numbers in, a gait out. <b>Exec:</b> you can buy or download layers and focus your own effort where your situation is unique. <b>Beginner:</b> like a driver (where), a reflex (dodge), and muscles (walk).</p>
+  </aside>
+</section>
+
+<!-- 5 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">Why simulate</p>
+  <h2 class="b" style="--i:1">Fail ten million times before anyone gets hurt</h2>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:24px">
+    <div class="card b" style="--i:2"><h3 class="hl">Safe to fail</h3><p class="small">Collisions cost nothing. Learning needs a lot of them.</p></div>
+    <div class="card b" style="--i:3"><h3 class="sn">Parallel</h3><p class="small">Thousands of worlds at once, faster than real time.</p></div>
+    <div class="card b" style="--i:4"><h3>Repeatable</h3><p class="small">Same seed, same world. Any incident can be replayed frame by frame.</p></div>
+    <div class="card b" style="--i:5"><h3>Ground truth</h3><p class="small">We know where every person was. Scoring never relies on the robot's own opinion.</p></div>
+  </div>
+  <p class="small b" style="--i:6"><span class="al">The catch:</span> simulation is not reality. Every result here is a simulated result, and we treat it that way.</p>
+  <aside class="notes">
+    <p>Four properties matter. Safety, parallelism, repeatability and ground truth. Repeatability and ground truth are underrated: they turn "the robot bumped someone" into a replayable, measurable event with exact distances and timestamps.</p>
+    <p><b>Exec:</b> repeatability is what makes accountability possible: you can show exactly what happened and test the fix against the same moment. <b>LLM trainer:</b> the simulator is both your environment and your labeler. <b>Beginner:</b> a flight simulator for robots, except it also grades the pilot.</p>
+  </aside>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">The world we built</p>
+  <h2 class="b" style="--i:1">A patrol through a fictional industrial site</h2>
+  <div class="row grow">
+    <figure class="b" style="--i:2;width:980px;flex:none"><img class="m" src="media/compound_overview.jpg" alt="Overhead view of the simulated industrial compound with buildings, zones and Spot's route"><figcaption>100 × 150 m compound · 8 waypoints · deterministic</figcaption></figure>
+    <div class="col grow b" style="--i:3">
+      <p class="small mono" style="color:var(--hazard)">IT REPORTS SIX OBJECTIVE EVENTS</p>
+      <ul class="small" style="padding-left:28px;margin:0;display:flex;flex-direction:column;gap:6px">
+        <li>Perimeter breach</li><li>Restricted-zone entry</li><li>Person fall</li><li>Vehicle in a prohibited zone</li><li>Gate left open</li><li>Route obstruction</li>
+      </ul>
+      <p class="small">It reports what happened. It never judges people.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>The task: Spot walks a route through a made-up industrial compound and reports six kinds of objective events. A deliberate design choice: the robot reports facts (a gate is open, a person fell) and never makes judgments about people.</p>
+    <p><b>Exec:</b> this is the shape of most early deployments: inspection, monitoring, reporting, around people who aren't part of the job. <b>Beginner:</b> a night-shift walk-through, but the walker is a robot.</p>
+  </aside>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">It notices what matters</p>
+  <h2 class="b" style="--i:1">3 of 3 incidents found, 0 false alerts</h2>
+  <div class="b" style="--i:2"><video src="media/incidents.mp4" poster="media/incidents_still.jpg" muted loop playsinline preload="metadata"></video></div>
+  <p class="small b" style="--i:3">Both scenarios, plus 10 of 10 randomized variants. Left: overhead view. Right: chase camera.</p>
+  <aside class="notes">
+    <p>Staged incidents with known ground truth: the scenario script knows exactly when and where each event happens, so detection is scored against fact. All incidents found in both scenarios, no false alerts, and ten randomized variants all perfect.</p>
+    <p><b>Agent builder:</b> this is the same pattern as a golden test set for an agent: scripted situations with known right answers. <b>Exec:</b> "zero false alerts" matters as much as "found them all"; alerts nobody trusts get ignored.</p>
+  </aside>
+</section>
+
+<!-- 8 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">How it learns</p>
+  <h2 class="b" style="--i:1">See, act, get scored, adjust. Billions of times.</h2>
+  <div class="row grow" style="align-items:center;gap:56px">
+    <svg class="b" style="--i:2;flex:none" width="520" height="520" viewBox="0 0 520 520" aria-label="Lidar sectors around the robot">
+      <g transform="translate(260 260)">
+        <g id="sectors"></g>
+        <circle r="230" fill="none" stroke="#26364D" stroke-width="2"/>
+        <rect x="-16" y="-20" width="32" height="40" rx="6" fill="#EEF1F4"/>
+        <path d="M0 -40 L0 -110" stroke="#F2B33D" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="120" cy="-150" r="10" fill="#E8664A"/><circle cx="-90" cy="-60" r="10" fill="#E8664A"/>
+      </g>
+    </svg>
+    <div class="col grow b" style="--i:3;gap:28px">
+      <div><p class="mono small sn">SEES · 134–198 NUMBERS</p><p>64 lidar sectors now and a moment ago, where the goal is, how fast it's moving.</p></div>
+      <div><p class="mono small hl">DOES · 3 NUMBERS, 10× A SECOND</p><p>Forward speed 0–1 m/s, sideways ±0.5 m/s, turn ±1 rad/s.</p></div>
+      <div><p class="mono small">THINKS · TWO SMALL NETWORKS</p><p>256 × 256 neurons each: one picks actions, one predicts how good things are going.</p></div>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>The robot never sees pixels in this setup. It sees a laser scan: 181 rays over 270 degrees, out to 12 metres, compressed into 64 sectors, plus the same scan from a moment ago so it can tell what's moving. Add where the goal is and its own velocity. Out come three numbers: forward speed, sideways speed and turn rate, ten times a second. The walking policy turns those into leg motions.</p>
+    <p><b>LLM trainer:</b> tiny model, tiny observation, enormous number of episodes; the opposite of your usual shape. <b>Beginner:</b> it's like learning to cross a busy station with your eyes half-closed, using only how far away things are.</p>
+  </aside>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">The algorithm: PPO</p>
+  <h2 class="b" style="--i:1">Do more of what beat expectations, but never change too much at once</h2>
+  <div class="row grow" style="align-items:center;gap:64px">
+    <div class="col b" style="--i:2;width:760px;flex:none">
+      <svg width="760" height="420" viewBox="0 0 760 420" aria-label="Clipped objective: gains are capped once the policy moves more than 20 percent">
+        <line x1="60" y1="360" x2="730" y2="360" stroke="#26364D" stroke-width="2"/>
+        <line x1="60" y1="30" x2="60" y2="360" stroke="#26364D" stroke-width="2"/>
+        <rect x="280" y="30" width="220" height="330" fill="#5CC8D6" opacity=".08"/>
+        <line x1="280" y1="30" x2="280" y2="360" stroke="#5CC8D6" stroke-dasharray="6 8" stroke-width="2"/>
+        <line x1="500" y1="30" x2="500" y2="360" stroke="#5CC8D6" stroke-dasharray="6 8" stroke-width="2"/>
+        <path d="M60 330 L500 150 L730 150" fill="none" stroke="#F2B33D" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M500 150 L730 56" fill="none" stroke="#9AA8BA" stroke-width="3" stroke-dasharray="4 10"/>
+      </svg>
+      <div class="row" style="justify-content:space-between;padding:0 30px 0 60px"><span class="tiny mono">less likely</span><span class="tiny mono sn">±20% trust zone</span><span class="tiny mono">more likely</span></div>
+    </div>
+    <div class="col grow b" style="--i:3">
+      <p>When an action turned out better than the critic expected, make it more likely. The gain stops counting past a 20% change, so one lucky episode can't hijack the policy.</p>
+      <p class="tiny mono">γ 0.99 · λ 0.95 · clip 0.2 · 4 epochs × 4 minibatches · lr 3e-4 · entropy 0.003 · target KL 0.03</p>
+      <p class="small">Explore: <a class="xl" href="explorer.html#ppo">explorer · PPO</a></p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Proximal Policy Optimization. Collect experience with the current policy, compute how much better or worse each action did than expected (the advantage), and nudge the policy toward the better actions. The clip is the key idea: once an action's probability has moved more than 20 percent, further gain doesn't count. That keeps learning stable.</p>
+    <p><b>LLM trainer:</b> this is exactly the PPO from RLHF. Same clipped objective, same KL guard. The difference is where the reward comes from: here it's physics and geometry, not a learned reward model, so there's no reward model to hack; but the reward function can still be gamed, as we'll see. <b>Exec:</b> stability matters because runs take hours; a training method that collapses wastes days.</p>
+  </aside>
+</section>
+
+<!-- 10 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">The reward is the spec</p>
+  <h2 class="b" style="--i:1">Whatever you don't price in, it will ignore</h2>
+  <div class="row grow" style="gap:56px;align-items:flex-start">
+    <table class="t b" style="--i:2;width:1080px;flex:none">
+      <tr><th>Term</th><th>When</th><th class="n">Weight</th></tr>
+      <tr><td>Progress</td><td>each metre closer to the goal</td><td class="n hl">+1.0</td></tr>
+      <tr><td>Time</td><td>every step (0.1 s)</td><td class="n">−0.01</td></tr>
+      <tr><td>Smoothness</td><td>jerky commands, ‖Δa‖²</td><td class="n">−0.01</td></tr>
+      <tr><td>Near miss</td><td>inside 0.3 m of a person</td><td class="n">up to −1 / step</td></tr>
+      <tr><td>Personal space (v3)</td><td>inside 1 m</td><td class="n">−0.2 · depth²</td></tr>
+      <tr><td>Contact · Wall</td><td>episode ends</td><td class="n al">−10</td></tr>
+      <tr><td>Success</td><td>goal reached</td><td class="n hl">+10</td></tr>
+    </table>
+    <div class="col grow b" style="--i:3">
+      <p class="small">Each line is a policy decision someone made: how much is a second worth? How close is too close?</p>
+      <p class="small">Try your own weights: <a class="xl" href="explorer.html#reward">explorer · reward</a></p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>This table is the real specification of the robot's behaviour. It doesn't know what a person is; it knows that getting close costs points and reaching the goal earns them. If time costs too much, it rushes through people. If contact costs too little, it shoulders past them.</p>
+    <p><b>Exec:</b> notice these are value judgments: how much is speed worth against comfort and safety. Somebody in your organization will make these trade-offs for deployed machines; better if they understand them. <b>LLM trainer:</b> reward shaping is visible here in a way it rarely is with language. <b>Agent builder:</b> same as writing the success criteria for an agent eval: vague criteria, weird behaviour.</p>
+  </aside>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">Five versions in two days</p>
+  <h2 class="b" style="--i:1">Each version fixed what the last one taught us</h2>
+  <div class="tl">
+    <div class="card b" style="--i:2"><span class="v">Easy</span><p>People walk straight lines and never react.</p><p class="hl mono" style="font-size:24px">96% success</p></div>
+    <div class="card b" style="--i:3"><span class="v hl">v1</span><p>Add adversarial pedestrians that react to the robot.</p><p class="mono" style="font-size:24px">31%</p></div>
+    <div class="card b" style="--i:4"><span class="v sn">v2</span><p>Give it memory: scans from 0.3 s and 0.6 s ago, because 0.1 s hid their motion.</p><p class="mono" style="font-size:24px">41%</p></div>
+    <div class="card b" style="--i:5"><span class="v">v3</span><p>Realistic crowd density near the robot, plus a personal-space penalty.</p><p class="mono al" style="font-size:24px">32%, nothing moved</p></div>
+    <div class="card b" style="--i:6"><span class="v" style="color:var(--muted)">v4</span><p>Planned: fix how speed is represented. One change at a time.</p><p class="mono" style="font-size:24px;color:var(--muted)">not yet run</p></div>
+  </div>
+  <p class="tiny b" style="--i:7">End-of-training success rate (smoothed) in each version's own world. Harder worlds mean lower numbers; these aren't directly comparable.</p>
+  <aside class="notes">
+    <p>The story of iteration. The easy version learned fast because the world was easy. Adding pedestrians who react cut success to about a third. Memory helped: in a tenth of a second a pedestrian barely moves on the scan, but over 0.6 seconds you can see where they're heading. Version 3 tested a hypothesis (more realistic crowds plus a comfort penalty) and the hypothesis failed: nothing important moved. Saying that out loud is part of the method.</p>
+    <p><b>Beginner:</b> each version is one experiment. <b>LLM trainer:</b> this is curriculum and environment design; the data distribution is the environment. <b>Exec:</b> two days, five versions, on one machine: that's the iteration speed that makes in-house expertise viable.</p>
+  </aside>
+</section>
+
+<!-- 12 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">Training curves</p>
+  <h2 class="b" style="--i:1">An easy world is learned in minutes. A hostile one plateaus.</h2>
+  <div class="b" style="--i:2"><svg id="curves" width="1664" height="560" viewBox="0 0 1664 560" aria-label="Success rate during training versus environment steps for four versions"></svg></div>
+  <p class="tiny b" style="--i:3">Success rate per training episode (smoothed) vs billions of simulated steps. Each run: 2 hours, 4,096 worlds. Explore: <a class="xl" href="explorer.html#curves">explorer · curves</a></p>
+  <aside class="notes">
+    <p>Real training logs. The easy world hits mid-90s almost immediately and stays there. The hard versions climb for about a billion steps and flatten in the 30–40 percent range. A flat line can mean the task is hard, the observations are missing something, or the action space is wrong. Telling those apart is the expertise.</p>
+    <p><b>LLM trainer:</b> same reading skills as loss curves; plateau diagnosis is the job. <b>Exec:</b> a curve going up is not the same as a robot you can deploy. The next slides show why.</p>
+  </aside>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">Read the actions, not just the score</p>
+  <div class="row grow" style="align-items:center;gap:80px">
+    <div class="col b" style="--i:1;width:720px;flex:none;gap:10px"><span class="big hl" style="font-size:220px">e¹</span><p class="mono small">= 2.718: the ceiling we set on the policy's speed noise. Every run hit it.</p></div>
+    <div class="col grow">
+      <h2 class="b" style="--i:2;font-size:72px">Its throttle became an on/off switch</h2>
+      <p class="b" style="--i:3">92% of forward commands were full speed. 1.6% were anything in between.</p>
+      <p class="small b" style="--i:4">The output is squashed through tanh, so huge noise pins it to the ends. Our leading suspect for the crowd bumps. A suspect, not a proven cause, so v4 tests it on its own.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>A diagnostic that came from looking at what the policy actually commands, not its score. The policy outputs a random number that gets squashed into a range. Its randomness grew until it hit the ceiling we'd set, so most samples land at the extremes: full speed or stop. A robot that can only sprint or stop is going to bump people in a crowd.</p>
+    <p>We call it a suspect, not a cause, because we haven't isolated it yet. Version 4 changes only this.</p>
+    <p><b>LLM trainer:</b> analogous to watching entropy and token distributions, not just reward. <b>Exec:</b> "how did it do" and "how does it behave" are different questions; ask both.</p>
+  </aside>
+</section>
+
+<!-- 14 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">Report the denominator</p>
+  <h2 class="b" style="--i:1">On the headline metric, it tied. Overall, it lost.</h2>
+  <table class="t b" style="--i:2">
+    <tr><th style="width:40%">80 held-out runs, hard tier</th><th class="n">RL v1</th><th class="n">RL v2</th><th class="n">RL v3</th><th class="n">Hand-written</th></tr>
+    <tr><td>Adversarial hit rate per committed approach</td><td class="n">37.2%</td><td class="n">35.2%</td><td class="n">40.0%</td><td class="n">38.5%</td></tr>
+    <tr><td>Runs that bumped an ordinary person</td><td class="n bad">61 / 80</td><td class="n bad">55 / 80</td><td class="n bad">56 / 80</td><td class="n hl">27 / 80</td></tr>
+    <tr><td>Median patrol time</td><td class="n">462 s</td><td class="n">388 s</td><td class="n">405 s</td><td class="n hl">377 s</td></tr>
+  </table>
+  <p class="small b" style="--i:3">Contacts per 100 person-seconds within 4 m: <span class="al mono">1.23</span> learned vs <span class="hl mono">0.24</span> hand-written. Explore: <a class="xl" href="explorer.html#denominator">explorer · denominator</a></p>
+  <aside class="notes">
+    <p>The most important slide. We trained against adversarial pedestrians, and on that metric the learned policy tied the hand-written planner. If we'd only reported that number we'd have declared victory. But it bumped ordinary, non-adversarial people in more than twice as many runs, and it was slower. Normalised by exposure (person-seconds near the robot), the learned policy's contact rate was about five times higher.</p>
+    <p>Held-out means seeds 121 to 200, never used in development, and the checkpoint was chosen in advance.</p>
+    <p><b>Exec:</b> when a vendor quotes one metric, ask for the others and ask for the exposure. <b>Agent builder:</b> same as an agent that aces your benchmark and fails on ordinary user requests. <b>Beginner:</b> a rate only means something if you know "out of what".</p>
+  </aside>
+</section>
+
+<!-- 15 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">Watch the video, not just the table</p>
+  <div class="row grow" style="gap:48px">
+    <div class="col b" style="--i:1;width:1180px;flex:none;gap:20px">
+      <div class="vlab"><video src="media/readers_vs_control.mp4" poster="media/readers_vs_control_still.jpg" muted loop playsinline preload="metadata"></video></div>
+      <div class="vlab"><video src="media/control_knocked.mp4" poster="media/control_knocked_still.jpg" muted loop playsinline preload="metadata"></video></div>
+    </div>
+    <div class="col grow b" style="--i:2">
+      <h2 style="font-size:64px">Always run a control</h2>
+      <p class="small">Top: with avoidance vs none, people who never react. Zero contacts, closest pass 0.47 m. The control was knocked over at 164 s.</p>
+      <p class="small">Bottom: the control in a live crowd.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Every experiment runs a no-avoidance control in the same world. Without it, "zero contacts" could just mean nobody walked near the robot. In the top clip people walk straight lines and never react; with avoidance the robot never touches anyone, closest pass 47 centimetres, while the control gets knocked over.</p>
+    <p>And we watch the videos. Once a table said the learned policy was "stuck". The video showed it had simply arrived 40 seconds early, before the pre-timed crowd showed up. The test had been tuned around the old controller. That's why the crowd is now closed-loop: people react to whatever robot is in front of them.</p>
+    <p><b>Exec:</b> demand controls and footage, not just summary stats. <b>Agent builder:</b> read the transcripts, not just the pass rate.</p>
+  </aside>
+</section>
+
+<!-- 16 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">Second robot: an arm</p>
+  <h2 class="b" style="--i:1">Teaching a hand: from 0 of 8 to 30 of 48</h2>
+  <div class="row grow" style="gap:56px;align-items:center">
+    <figure class="b" style="--i:2;width:900px;flex:none"><video src="media/arm_expert.mp4" poster="media/arm_expert_still.jpg" muted loop playsinline preload="metadata"></video><figcaption>Scripted expert: scene camera and wrist camera, 30 Hz</figcaption></figure>
+    <div class="col grow b" style="--i:3">
+      <p>A low-cost open arm (SO-101) moves a mug into a bowl. First we wrote an expert to generate demonstrations.</p>
+      <p class="small">The breakthrough was measuring the asset: the mug's origin sat <span class="hl mono">2.2 cm</span> off the cup's centre. Then <span class="hl mono">909</span> successful demos fine-tuned a <span class="hl mono">7B</span> open action model in 3.4 h.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Different learning style: imitation. A scripted expert uses perfect knowledge of where things are to perform the task, and we record only what a real robot would have: two cameras and its joint angles. The model learns to copy it from pixels.</p>
+    <p>The expert went from zero to 62.5 percent by measuring things in the live simulator instead of trusting the files. The mug's reference point wasn't where the cup was. 909 successful demonstrations then fine-tuned FLUX 3 Action, a 7-billion-parameter open action model, with a small adapter in a few hours.</p>
+    <p><b>LLM trainer:</b> this is supervised fine-tuning with LoRA, same as you'd do on a language model, just on video plus joint angles. <b>Beginner:</b> show it hundreds of examples, it learns to copy.</p>
+  </aside>
+</section>
+
+<!-- 17 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">The overnight run</p>
+  <h2 class="b" style="--i:1">Seven successes. All seven fake.</h2>
+  <div class="row grow" style="gap:40px">
+    <figure class="b" style="--i:2;flex:1"><video src="media/arm_fake_success.mp4" poster="media/arm_fake_success_still.jpg" muted loop playsinline preload="metadata"></video><figcaption class="al">Scored "success": the bowl spawned on top of the object</figcaption></figure>
+    <figure class="b" style="--i:3;flex:1"><video src="media/arm_first_success.mp4" poster="media/arm_first_success_still.jpg" muted loop playsinline preload="metadata"></video><figcaption class="hl">The first real one: grasp, lift, carry, place</figcaption></figure>
+  </div>
+  <p class="small b" style="--i:4">True overnight score: 0. A fixed random seed replayed one bad placement for every policy, and the success check never required a lift. With the jaw pre-opened: 1 of 6, genuinely. Try it: <a class="xl" href="explorer.html#real-or-fake">explorer · real or fake</a></p>
+  <aside class="notes">
+    <p>A ten-hour overnight pipeline reported seven successes. We watched every one. All seven were bugs: one evaluation seed meant the same bad starting layout repeated for every model, the bowl sometimes spawned on top of the object, and the success check only measured distance, so "object near bowl" counted even if the robot never touched it. One was a physics explosion.</p>
+    <p>The right-hand clip is genuine: the model grasps, lifts, carries and places the mug. One in six, with the gripper pre-opened. It's the first real closed-loop success, and it's honest about how far there is to go.</p>
+    <p><b>Exec:</b> automated success detectors are code, and code has bugs; demand to see the footage behind the number. <b>Agent builder:</b> LLM-as-judge has the same failure mode. <b>LLM trainer:</b> eval leakage and fixed seeds, the same lessons in a new medium.</p>
+  </aside>
+</section>
+
+<!-- 18 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">World models</p>
+  <h2 class="b" style="--i:1">The model imagines the next two seconds, and we can watch</h2>
+  <div class="row grow" style="gap:48px;align-items:center">
+    <figure class="b" style="--i:2;width:420px;flex:none"><video src="media/droid_imagined.mp4" poster="media/droid_imagined_still.jpg" muted loop playsinline preload="metadata"></video><figcaption>Real (top) vs imagined (bottom), public robot data</figcaption></figure>
+    <figure class="b" style="--i:3;width:760px;flex:none"><video src="media/t2v_ocean.mp4" poster="media/t2v_ocean_still.jpg" muted loop playsinline preload="metadata"></video><figcaption>Same model, asked only for video</figcaption></figure>
+    <div class="col grow b" style="--i:4"><p class="small">It plans 2.1 s of motion in 1.0 s, predicting both the joint commands and the video of what will happen.</p><p class="small">Next idea: imagine several futures, pick the best one.</p></div>
+  </div>
+  <aside class="notes">
+    <p>FLUX 3 Action is a world-action model: when it plans arm movements it also predicts the video of the next couple of seconds, then normally throws that video away. We kept it and decoded it. Top is what the robot really did, bottom is what the model imagined. It's blurry but directionally right.</p>
+    <p>The same model can just generate video, like the ocean clip. Planning takes about a second for two seconds of motion after compilation.</p>
+    <p>Where this goes: let the robot imagine several possible futures, score them, and execute the best. Also memory and goal images. That's the research frontier, and it's open.</p>
+    <p><b>Agent builder:</b> this is plan-then-act with a simulator in the model's head. <b>LLM trainer:</b> it's one diffusion transformer jointly denoising actions and video tokens.</p>
+  </aside>
+</section>
+
+<!-- 20 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">Honest status</p>
+  <h2 class="b" style="--i:1">What isn't mature yet</h2>
+  <div class="col" style="gap:22px">
+    <div class="row b" style="--i:2;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">crowds</span><p>Our learned steering doesn't beat a hand-written planner around ordinary people yet.</p></div>
+    <div class="row b" style="--i:3;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">hands</span><p>The fine-tuned arm succeeds 1 time in 6, with help.</p></div>
+    <div class="row b" style="--i:4;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">reality</span><p>Everything here is simulated. The gap to real floors, light and people is real.</p></div>
+    <div class="row b" style="--i:5;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">evals</span><p>Evaluations are easy to fool. We fooled ourselves twice in one week, and caught it.</p></div>
+  </div>
+  <aside class="notes">
+    <p>Say this plainly. The technology is not mature. Hand-written rules still win in places. Learned manipulation is fragile. Sim-to-real is a whole discipline. And evaluation is where most of the danger is, because a broken evaluation makes an immature system look ready.</p>
+    <p><b>Exec:</b> this is exactly why to build expertise now: the people who can tell real progress from a broken metric are rare, and you'll need them before the vendors arrive. Transition to the next section.</p>
+  </aside>
+</section>
+
+<!-- 21 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">Where this shows up</p>
+  <h2 class="b" style="--i:1">Every industry with floors, fields, or fleets</h2>
+  <div class="ig">
+    <div class="card b" style="--i:2"><h3>Warehousing</h3><p>Mobile robots sharing aisles with people</p></div>
+    <div class="card b" style="--i:2"><h3>Manufacturing</h3><p>Arms leaving cages for shared workcells</p></div>
+    <div class="card b" style="--i:3"><h3>Energy &amp; utilities</h3><p>Legged inspection of plants, lines, substations</p></div>
+    <div class="card b" style="--i:3"><h3>Construction</h3><p>Site scanning, layout, progress checks</p></div>
+    <div class="card b" style="--i:4"><h3>Agriculture</h3><p>Harvesting and field robots near workers</p></div>
+    <div class="card b" style="--i:4"><h3>Healthcare logistics</h3><p>Delivery robots in hospital corridors</p></div>
+    <div class="card b" style="--i:5"><h3>Retail</h3><p>Shelf scanning and restocking in open hours</p></div>
+    <div class="card b" style="--i:5"><h3>Facilities &amp; security</h3><p>Patrols that report events, like ours</p></div>
+  </div>
+  <p class="small b" style="--i:6">More detail per industry: <a class="xl" href="explorer.html#industries">explorer · industries</a></p>
+  <aside class="notes">
+    <p>Walk the grid quickly. The common thread: machines that move on their own, near people and property that aren't part of the job. That's where the hard questions live.</p>
+    <p><b>Exec:</b> ask which of these touch your operations, your suppliers, or your customers' operations. Most large organizations will touch several, as an operator, a buyer, a partner, or the party that answers when something goes wrong.</p>
+  </aside>
+</section>
+
+<!-- 22 -->
+<section class="slide hz">
+  <p class="eyebrow b" style="--i:0">The questions every organization will face</p>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:48px 72px;margin-top:20px">
+    <h2 class="b" style="--i:1;font-size:68px">Does it behave around people?</h2>
+    <h2 class="b" style="--i:2;font-size:68px">How often does it fail, per hour of exposure?</h2>
+    <h2 class="b" style="--i:3;font-size:68px">Can we replay an incident exactly?</h2>
+    <h2 class="b" style="--i:4;font-size:68px">Can we test a vendor's promise before it's on our floor?</h2>
+  </div>
+  <p class="lede b" style="--i:5;margin-top:auto">Simulation and honest evaluation answer all four. That's a skill set, not a product.</p>
+  <aside class="notes">
+    <p>Pause on this slide. These four questions will be asked about every autonomous machine that operates near people: by operators, buyers, partners, regulators and anyone who has to answer for outcomes. Each maps to something we did: behaviour tests with adversarial and ordinary people; contact rates normalised by exposure time; deterministic replay of any incident; and a held-out benchmark to test a system before deployment.</p>
+    <p><b>Exec:</b> if your organization can't answer these for a machine it's about to rely on, that's the gap.</p>
+  </aside>
+</section>
+
+<!-- 23 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">Why now, if it's immature</p>
+  <h2 class="b" style="--i:1">Judgment takes years to grow. The tools took weeks.</h2>
+  <div class="row grow" style="align-items:stretch;gap:28px">
+    <div class="card grow b" style="--i:2"><h3 class="hl">The cost collapsed</h3><p class="small">One workstation, open simulators, open models. Everything in this talk.</p></div>
+    <div class="card grow b" style="--i:3"><h3 class="sn">You'll buy before it's mature</h3><p class="small">Vendors will arrive with demos and one headline number. Someone has to ask for the denominator.</p></div>
+    <div class="card grow b" style="--i:4"><h3>Your people are halfway there</h3><p class="small">Agent builders know tools and evals. LLM trainers know PPO and fine-tuning. The gap is physics and sensors.</p></div>
+  </div>
+  <aside class="notes">
+    <p>The argument for investing now. First, the cost of a credible internal lab is one machine and a few people. Second, organizations will adopt these systems before they're mature, through vendors, suppliers and partners, and the expensive mistakes happen in evaluation. Third, the skills are adjacent: agent teams already think in tools, plans and evals; ML teams already know the training algorithms. What's missing is simulation, sensors and physical intuition, which grows with hands-on time.</p>
+    <p><b>Agent builder:</b> your eval instincts are the most transferable skill in this room. <b>LLM trainer:</b> your RL knowledge transfers directly; the new part is environment design.</p>
+  </aside>
+</section>
+
+<!-- 24 -->
+<section class="slide alt">
+  <p class="eyebrow b" style="--i:0">Federated capability</p>
+  <h2 class="b" style="--i:1">A small core builds once. Every team reuses it.</h2>
+  <div class="row grow" style="gap:56px;align-items:center">
+    <svg class="b" style="--i:2;flex:none" width="760" height="600" viewBox="0 0 760 600" aria-label="Hub and spoke: a core team connected to five teams">
+      <g stroke="#26364D" stroke-width="3">
+        <line x1="380" y1="300" x2="380" y2="70"/><line x1="380" y1="300" x2="640" y2="200"/><line x1="380" y1="300" x2="590" y2="510"/><line x1="380" y1="300" x2="170" y2="510"/><line x1="380" y1="300" x2="120" y2="200"/>
+      </g>
+      <circle cx="380" cy="300" r="120" fill="#F2B33D"/>
+      <g fill="#152234" stroke="#5CC8D6" stroke-width="3"><circle cx="380" cy="70" r="62"/><circle cx="640" cy="200" r="62"/><circle cx="590" cy="510" r="62"/><circle cx="170" cy="510" r="62"/><circle cx="120" cy="200" r="62"/></g><g font-family="'Instrument Sans',Helvetica,Arial,sans-serif" font-size="21" fill="#EEF1F4" text-anchor="middle"><text x="380" y="77">Operations</text><text x="640" y="207">Facilities</text><text x="590" y="517">Logistics</text><text x="170" y="517">Product</text><text x="120" y="207">Partners</text></g><g font-family="'Archivo',Helvetica,Arial,sans-serif" font-weight="800" font-size="34" fill="#0E1724" text-anchor="middle"><text x="380" y="294">Core</text><text x="380" y="332">team</text></g>
+    </svg>
+    <div class="col grow b" style="--i:3;gap:18px">
+      <p class="mono small hl">THE CORE OWNS</p>
+      <p class="small">A scenario library from real operations · an evaluation harness with controls and held-out seeds · exposure-normalised metrics and incident replay · training recipes</p>
+      <p class="mono small sn">TEAMS AND PARTNERS GET</p>
+      <p class="small">Tested scenarios for their own sites · a way to check vendor numbers · people who've done it once, embedded with them</p>
+      <p class="small">See it animated: <a class="xl" href="explorer.html#federate">explorer · federate</a></p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>How to organize. Not a big central robotics department, and not every business unit reinventing it. A small core, maybe three to six people, builds the reusable pieces: a library of simulated scenarios drawn from the organization's own operations, an evaluation harness that always runs controls and held-out tests, metrics normalised by exposure, and deterministic incident replay. Business units and partners plug their own sites and machines into it, and the core seeds expertise by embedding people.</p>
+    <p>Don't outsource judgment. Buy hardware and models freely; keep the ability to test them in-house.</p>
+    <p><b>Exec:</b> this is a familiar pattern, like a cloud or data platform team. <b>Agent builder:</b> the same way a shared eval and tooling platform serves many agent teams.</p>
+  </aside>
+</section>
+
+<!-- 25 -->
+<section class="slide">
+  <p class="eyebrow b" style="--i:0">A starter path</p>
+  <h2 class="b" style="--i:1">Ninety days, one workstation, three people</h2>
+  <div class="tl" style="grid-template-columns:repeat(4,1fr)">
+    <div class="card b" style="--i:2"><span class="mono hl" style="font-size:24px">WEEKS 1–2</span><h3>Run the basics</h3><p>Install a simulator, train a classic control task, watch a pretrained robot walk.</p></div>
+    <div class="card b" style="--i:3"><span class="mono hl" style="font-size:24px">WEEKS 3–6</span><h3>One real scenario</h3><p>Rebuild one situation from your own operations. Add a no-action control.</p></div>
+    <div class="card b" style="--i:4"><span class="mono hl" style="font-size:24px">WEEKS 7–10</span><h3>Evaluation first</h3><p>Held-out seeds, exposure rates, video review, a success check you've tried to break.</p></div>
+    <div class="card b" style="--i:5"><span class="mono hl" style="font-size:24px">WEEKS 11–13</span><h3>Test a vendor</h3><p>Run an open model or a vendor system through it. Share the harness.</p></div>
+  </div>
+  <aside class="notes">
+    <p>A concrete start. Notice training a fancy policy is not on the list until after the evaluation exists. Our own week went: simulator, scenario, controls, evaluation, then learning, and the learning part was where we fooled ourselves until the evaluation caught it.</p>
+    <p><b>Exec:</b> the deliverable at day 90 is not a robot; it's the ability to answer the four questions for one scenario. <b>Beginner:</b> weeks 1–2 are genuinely approachable with free tools.</p>
+  </aside>
+</section>
+
+<!-- 26 -->
+<section class="slide" style="justify-content:center">
+  <p class="eyebrow b" style="--i:0">One line to remember</p>
+  <h1 class="b" style="--i:1;max-width:1500px">Evaluation is the product.</h1>
+  <p class="lede b" style="--i:2">Models and robots will keep getting better on their own. Knowing when to trust them won't.</p>
+  <p class="small b" style="--i:3">Hands-on companion: <a class="xl" href="explorer.html">explorer.html</a></p>
+  <div class="foot"><span>Thank you</span><span>Questions</span></div>
+  <aside class="notes">
+    <p>Close on the thesis. The interactive companion lets people play with the reward, the learning loop, the denominator and the real-or-fake quiz on their own.</p>
+  </aside>
+</section>
+
+<!-- 27 -->
+<section class="slide alt">
+  <p class="eyebrow">Credits</p>
+  <h2 style="font-size:64px">Built on open tools and public data</h2>
+  <ul class="small" style="padding-left:28px;margin:0;display:flex;flex-direction:column;gap:14px">
+    <li>NVIDIA Isaac Sim 6.1 and Isaac Lab 3.0, including the Spot robot asset and its pretrained locomotion policy</li>
+    <li>FLUX 3 Action © Black Forest Labs, used under the FLUX Kommunity License</li>
+    <li>DROID robot manipulation dataset (CC BY 4.0)</li>
+    <li>SO-101 open-hardware arm and the LeRobot project</li>
+  </ul>
+  <p class="small">All scenes, people and sites shown are simulated or fictional.</p>
+  <aside class="notes"><p>Credits. Everything shown is simulated; the compound and its people are fictional.</p></aside>
+</section>
+
+</div></div>
+<div id="notes" aria-live="polite"><h4>Speaker notes</h4><div id="notesBody"></div></div>
+<div id="help">← → move · N notes · G grid · F fullscreen</div>
+<div id="count"></div>
+
+<script src="race.js"></script>
+<script src="reel/chapters.js"></script>
+<script src="reelplayer.js"></script>
+<script>
+if(window.RacePlayer)RacePlayer.mountAll();
+if(window.ReelPlayer)ReelPlayer.mountAll();
+(function(){
+  var stage=document.getElementById('stage'), slides=[].slice.call(document.querySelectorAll('.slide'));
+  var bar=document.getElementById('bar'), count=document.getElementById('count');
+  var notes=document.getElementById('notes'), notesBody=document.getElementById('notesBody');
+  var cur=0, grid=false;
+
+  function fit(){
+    if(grid){stage.style.transform='';return;}
+    var s=Math.min(window.innerWidth/1920, window.innerHeight/1080);
+    stage.style.transform='scale('+s+')';
+  }
+  function syncVideos(){
+    slides.forEach(function(sl,i){
+      [].forEach.call(sl.querySelectorAll('.reelp'),function(r){
+        if(!r._rlp)return; if(i===cur && !grid) r._rlp.start(); else r._rlp.stop();
+      });
+      [].forEach.call(sl.querySelectorAll('video:not([data-reel])'),function(v){
+        if(i===cur && !grid){ v.currentTime=0; var p=v.play(); if(p&&p.catch)p.catch(function(){}); }
+        else v.pause();
+      });
+    });
+  }
+  function show(i, fromHash){
+    cur=Math.max(0,Math.min(slides.length-1,i));
+    slides.forEach(function(s,k){s.classList.toggle('active',k===cur);});
+    bar.style.width=((cur+1)/slides.length*100)+'%';
+    count.textContent=(cur+1)+' / '+slides.length;
+    var a=slides[cur].querySelector('aside.notes');
+    notesBody.innerHTML=a?a.innerHTML:'<p>No notes.</p>';
+    if(!fromHash){ try{history.replaceState(null,'','#'+(cur+1));}catch(e){location.hash=String(cur+1);} }
+    syncVideos();
+  }
+  function setGrid(on){
+    grid=on; document.body.classList.toggle('grid',on); fit(); syncVideos();
+    if(on) slides[cur].scrollIntoView({block:'center'});
+  }
+  slides.forEach(function(s,k){
+    s.addEventListener('click',function(e){ if(grid){ setGrid(false); show(k); e.preventDefault(); } });
+  });
+  stage.addEventListener('click',function(e){
+    if(grid)return;
+    var v=e.target.closest('video'); if(!v)return;
+    if(v.paused){var p=v.play(); if(p&&p.catch)p.catch(function(){});} else v.pause();
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.metaKey||e.ctrlKey||e.altKey)return;
+    var k=e.key;
+    if(k==='ArrowRight'||k==='PageDown'||k===' '){ if(grid)return; e.preventDefault();
+      var rp=slides[cur].querySelector('.reelp'); if(rp&&rp._rlp&&rp._rlp.advance())return;
+      show(cur+1); }
+    else if(k==='ArrowLeft'||k==='PageUp'){ if(grid)return; e.preventDefault(); show(cur-1); }
+    else if(k==='Home'){ show(0); } else if(k==='End'){ show(slides.length-1); }
+    else if(k==='n'||k==='N'){ notes.classList.toggle('open'); }
+    else if(k==='g'||k==='G'){ setGrid(!grid); }
+    else if(k==='Escape'&&grid){ setGrid(false); }
+    else if(k==='f'||k==='F'){
+      try{ if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(function(){}); else document.exitFullscreen(); }catch(err){}
+    }
+  });
+  window.addEventListener('resize',fit);
+  window.addEventListener('hashchange',function(){ var n=parseInt(location.hash.slice(1),10); if(n&&n-1!==cur) show(n-1,true); });
+
+  /* lidar sectors on the "how it learns" slide */
+  (function(){
+    var g=document.getElementById('sectors'); if(!g)return;
+    var NS='http://www.w3.org/2000/svg', n=64, start=-135, span=270, html='';
+    var ranges=[];
+    for(var i=0;i<n;i++){
+      var a=start+span*(i+.5)/n, r=230;
+      if(i>40&&i<47) r=95+Math.abs(i-43.5)*14;
+      if(i>14&&i<19) r=150+Math.abs(i-16.5)*12;
+      ranges.push(r);
+    }
+    for(var j=0;j<n;j++){
+      var a0=(start+span*j/n-90)*Math.PI/180, a1=(start+span*(j+1)/n-90)*Math.PI/180, r=ranges[j];
+      var p='M0 0 L'+(r*Math.cos(a0)).toFixed(1)+' '+(r*Math.sin(a0)).toFixed(1)+' A'+r+' '+r+' 0 0 1 '+(r*Math.cos(a1)).toFixed(1)+' '+(r*Math.sin(a1)).toFixed(1)+' Z';
+      var path=document.createElementNS(NS,'path'); path.setAttribute('d',p);
+      path.setAttribute('fill', r<230? 'rgba(232,102,74,0.35)':'rgba(92,200,214,0.14)');
+      path.setAttribute('stroke','#0E1724'); path.setAttribute('stroke-width','1');
+      g.appendChild(path);
+    }
+  })();
+
+  /* training curves (success rate vs billions of env steps; smoothed from the run logs) */
+  (function(){
+    var D={"legacy":[[0.0001,0.834],[0.1,0.928],[0.1999,0.943],[0.2998,0.936],[0.3996,0.943],[0.4995,0.949],[0.5994,0.952],[0.6993,0.953],[0.7991,0.956],[0.899,0.961],[0.9989,0.96],[1.0988,0.96],[1.1987,0.961],[1.2985,0.962],[1.3984,0.964],[1.4983,0.961],[1.5982,0.962],[1.698,0.964],[1.7979,0.963],[1.8978,0.961],[1.9977,0.958],[2.0975,0.963],[2.1974,0.966],[2.2973,0.96],[2.3972,0.963],[2.4971,0.961],[2.5969,0.963],[2.6968,0.961],[2.7967,0.963],[2.8966,0.962],[2.9964,0.959],[3.0963,0.963],[3.1962,0.965],[3.2961,0.962],[3.3959,0.959],[3.4958,0.96],[3.5957,0.96],[3.6956,0.962],[3.7955,0.963],[3.8953,0.959],[3.9952,0.96]],
+    "v1":[[0.0001,0.026],[0.0532,0.118],[0.1063,0.178],[0.1594,0.202],[0.2125,0.247],[0.2656,0.277],[0.3186,0.301],[0.3717,0.307],[0.4248,0.319],[0.4779,0.326],[0.531,0.297],[0.5841,0.312],[0.6371,0.342],[0.6902,0.354],[0.7433,0.351],[0.7964,0.353],[0.8495,0.336],[0.9026,0.356],[0.9556,0.369],[1.0087,0.36],[1.0618,0.36],[1.1149,0.371],[1.168,0.374],[1.2211,0.373],[1.2742,0.357],[1.3272,0.384],[1.3803,0.375],[1.4334,0.369],[1.4865,0.383],[1.5396,0.379],[1.5927,0.367],[1.6457,0.367],[1.6988,0.365],[1.7519,0.35],[1.805,0.363],[1.8581,0.37],[1.9112,0.352],[1.9642,0.353],[2.0173,0.343],[2.0704,0.349],[2.1235,0.356]],
+    "v2":[[0.0001,0.016],[0.054,0.066],[0.1079,0.131],[0.1617,0.189],[0.2156,0.202],[0.2695,0.214],[0.3234,0.198],[0.3772,0.18],[0.4311,0.225],[0.485,0.234],[0.5388,0.247],[0.5927,0.273],[0.6466,0.275],[0.7004,0.261],[0.7543,0.269],[0.8082,0.299],[0.8621,0.309],[0.9159,0.325],[0.9698,0.352],[1.0237,0.358],[1.0775,0.358],[1.1314,0.387],[1.1853,0.407],[1.2392,0.407],[1.293,0.431],[1.3469,0.444],[1.4008,0.423],[1.4546,0.415],[1.5085,0.394],[1.5624,0.378],[1.6162,0.398],[1.6701,0.4],[1.724,0.41],[1.7779,0.384],[1.8317,0.385],[1.8856,0.386],[1.9395,0.401],[1.9933,0.413],[2.0472,0.419],[2.1011,0.419],[2.155,0.405]],
+    "v3":[[0.0001,0.016],[0.0512,0.111],[0.1024,0.148],[0.1535,0.167],[0.2046,0.211],[0.2557,0.197],[0.3068,0.17],[0.358,0.172],[0.4091,0.215],[0.4602,0.218],[0.5113,0.225],[0.5624,0.254],[0.6135,0.257],[0.6647,0.266],[0.7158,0.273],[0.7669,0.282],[0.818,0.278],[0.8691,0.283],[0.9203,0.26],[0.9714,0.264],[1.0225,0.287],[1.0736,0.299],[1.1247,0.298],[1.1758,0.298],[1.227,0.314],[1.2781,0.321],[1.3292,0.317],[1.3803,0.318],[1.4314,0.306],[1.4826,0.307],[1.5337,0.315],[1.5848,0.316],[1.6359,0.327],[1.687,0.33],[1.7381,0.322],[1.7893,0.308],[1.8404,0.318],[1.8915,0.329],[1.9426,0.33],[1.9937,0.328],[2.0449,0.334]]};
+    var S=[{k:'legacy',name:'Easy world',c:'#9AA8BA',dash:'10 8'},{k:'v1',name:'v1 adversarial',c:'#F2B33D'},{k:'v2',name:'v2 + memory',c:'#5CC8D6'},{k:'v3',name:'v3 + dense crowd',c:'#EEF1F4'}];
+    var svg=document.getElementById('curves'); if(!svg)return;
+    var NS='http://www.w3.org/2000/svg', L=110,R=1440,T=20,B=480, X=function(v){return L+(R-L)*v/4;}, Y=function(v){return B-(B-T)*v;};
+    function el(t,a){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e;}
+    function txt(x,y,s,a){var e=el('text',Object.assign({x:x,y:y,fill:'#9AA8BA','font-size':24,'font-family':"'JetBrains Mono',monospace"},a||{}));e.textContent=s;return e;}
+    [0,.25,.5,.75,1].forEach(function(v){ el('line',{x1:L,x2:R,y1:Y(v),y2:Y(v),stroke:'#26364D','stroke-width':v===0?2:1}); txt(L-16,Y(v)+8,Math.round(v*100)+'%',{'text-anchor':'end'}); });
+    [0,1,2,3,4].forEach(function(v){ txt(X(v),B+44,v+'B',{'text-anchor':'middle'}); });
+    txt((L+R)/2,B+78,'simulated steps',{'text-anchor':'middle','font-size':22});
+    var ends=[];
+    S.forEach(function(s){
+      var d=D[s.k].map(function(p,i){return (i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1);}).join(' ');
+      var a={d:d,fill:'none',stroke:s.c,'stroke-width':s.k==='legacy'?4:5,'stroke-linejoin':'round','stroke-linecap':'round'}; if(s.dash)a['stroke-dasharray']=s.dash;
+      el('path',a);
+      var last=D[s.k][D[s.k].length-1]; ends.push({s:s,x:X(last[0]),y:Y(last[1]),v:last[1]});
+    });
+    ends.sort(function(a,b){return a.y-b.y;});
+    for(var i=1;i<ends.length;i++){ if(ends[i].y-ends[i-1].y<34) ends[i].y=ends[i-1].y+34; }
+    ends.forEach(function(e){
+      el('circle',{cx:e.s.k==='legacy'?X(4):X(D[e.s.k][D[e.s.k].length-1][0]),cy:Y(e.v),r:7,fill:e.s.c});
+      var lx=(e.s.k==='legacy'?X(4):X(2.15))+18;
+      var t=txt(lx,e.y+8,e.s.name+' '+Math.round(e.v*100)+'%',{fill:e.s.c,'font-size':24});
+    });
+  })();
+
+  var n=parseInt(location.hash.slice(1),10);
+  fit(); show(n?n-1:0, !!n);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Robot Learning Field Guide</title>
+<style>
+/* Layout: one reading column (max 1180px) of numbered stations; every station = heading, lens note, live instrument. */
+:root{
+  --ink:#0E1724; --panel:#152234; --panel-2:#1B2B40; --line:#26364D; --paper:#EEF1F4; --muted:#9AA8BA;
+  --hazard:#F2B33D; --hazard-ink:#F2B33D; --sensor:#5CC8D6; --alarm:#E8664A; --violet:#B79CF0; --on-hazard:#1A1405;
+  --f-display:"Archivo","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Instrument Sans","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --ink:#EEF1F5; --panel:#F8FAFC; --panel-2:#E6EBF1; --line:#C9D2DD; --paper:#132033; --muted:#526174;
+  --hazard:#D9940F; --hazard-ink:#8A5A00; --sensor:#0E8696; --alarm:#C2412A; --violet:#6F4FC2; --on-hazard:#1A1405; color-scheme:light}}
+:root[data-theme="light"]{
+  --ink:#EEF1F5; --panel:#F8FAFC; --panel-2:#E6EBF1; --line:#C9D2DD; --paper:#132033; --muted:#526174;
+  --hazard:#D9940F; --hazard-ink:#8A5A00; --sensor:#0E8696; --alarm:#C2412A; --violet:#6F4FC2; --on-hazard:#1A1405; color-scheme:light}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:120px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--ink);color:var(--paper);font:16px/1.6 var(--f-body);-webkit-font-smoothing:antialiased}
+img,video,canvas{max-width:100%;display:block}
+a{color:var(--sensor)}
+:focus-visible{outline:2px solid var(--hazard);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+@media (max-width:520px){.wrap{padding-inline:16px}}
+h1,h2,h3{font-family:var(--f-display);font-stretch:112%;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h2{font-size:clamp(28px,4vw,44px);line-height:1.08;font-weight:800}
+h3{font-size:19px;font-weight:700;font-stretch:105%}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:600 12px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--hazard-ink);display:flex;gap:10px;align-items:center}
+.eyebrow b{color:var(--muted);font-weight:600}
+
+/* ---------- top bar ---------- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--ink) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;align-items:center;gap:14px;padding-block:10px;flex-wrap:wrap}
+.brand{font:800 15px/1 var(--f-display);font-stretch:118%;letter-spacing:.02em;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.brand i{width:10px;height:10px;border-radius:2px;background:var(--hazard);box-shadow:0 0 0 3px color-mix(in srgb,var(--hazard) 25%,transparent)}
+.lens{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:0;max-width:100%}
+.lens-label{font:600 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.seg{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow-x:auto;scrollbar-width:none;min-width:0}
+.seg::-webkit-scrollbar{display:none}
+.seg button{all:unset;cursor:pointer;white-space:nowrap;font:600 13px/1 var(--f-body);padding:8px 12px;border-radius:999px;color:var(--muted);transition:background .2s,color .2s}
+.seg button:hover{color:var(--paper)}
+.seg button[aria-pressed="true"]{background:var(--hazard);color:var(--on-hazard)}
+.seg button:focus-visible{outline:2px solid var(--sensor)}
+.tools{display:flex;gap:8px;align-items:center}
+.chipbtn{all:unset;cursor:pointer;font:600 13px/1 var(--f-body);padding:9px 12px;border:1px solid var(--line);border-radius:8px;color:var(--paper);white-space:nowrap;background:var(--panel)}
+.chipbtn:hover{border-color:var(--muted)}
+.chipbtn:focus-visible{outline:2px solid var(--hazard)}
+@media (max-width:760px){.lens{order:3;width:100%;margin-left:0}.tools{margin-left:auto}}
+
+/* ---------- hero ---------- */
+.hero{position:relative;border-bottom:1px solid var(--line);overflow:hidden}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%}
+.hero .scrim{position:absolute;inset:0;background:linear-gradient(90deg,var(--ink) 0%,color-mix(in srgb,var(--ink) 82%,transparent) 42%,color-mix(in srgb,var(--ink) 10%,transparent) 75%)}
+.hero .wrap{position:relative;padding-block:72px 64px;display:grid;gap:22px}
+.hero h1{font-size:clamp(38px,6.4vw,78px);line-height:.98;font-weight:800;font-stretch:118%;max-width:12ch}
+.hero h1 em{font-style:normal;color:var(--hazard-ink)}
+.hero .lede{font-size:clamp(17px,1.6vw,20px);max-width:52ch;color:var(--paper)}
+.hero .stats{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:6px}
+.stat{display:grid;gap:2px}
+.stat b{font:700 26px/1 var(--f-mono);color:var(--paper)}
+.stat span{font:500 12px/1.3 var(--f-mono);color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.toc a{text-decoration:none;font:600 12px/1 var(--f-mono);letter-spacing:.04em;color:var(--paper);border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 80%,transparent);padding:8px 10px;border-radius:6px}
+.toc a span{color:var(--hazard-ink);margin-right:6px}
+.toc a:hover{border-color:var(--hazard)}
+
+/* ---------- stations ---------- */
+.sec{padding-block:84px 24px;border-bottom:1px solid var(--line)}
+.sec:last-of-type{border-bottom:0}
+.sec-head{display:grid;gap:14px;max-width:820px}
+.core{font-size:18px;color:var(--paper);max-width:62ch}
+.note{margin-top:22px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;max-width:820px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--sensor);border-radius:10px;padding:16px 18px}
+.note .who{font:600 11px/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--sensor);padding-top:4px;white-space:nowrap}
+.note p{color:var(--paper);min-width:0}
+.note p.swap{animation:swap .45s ease both}
+@keyframes swap{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.note p.swap{animation:none}}
+@media (max-width:560px){.note{grid-template-columns:1fr;gap:6px}}
+.instrument{margin-top:30px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;min-width:0}
+.instrument[style*="display:grid"]{grid-template-columns:minmax(0,1fr)}
+.cap{font-size:14px;color:var(--muted)}
+.cap b{color:var(--paper);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{all:unset;cursor:pointer;font:600 14px/1 var(--f-body);padding:11px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--paper);display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn:focus-visible{outline:2px solid var(--hazard)}
+.btn.primary{background:var(--hazard);border-color:var(--hazard);color:var(--on-hazard)}
+.btn[aria-pressed="true"]{border-color:var(--hazard);box-shadow:inset 0 0 0 1px var(--hazard)}
+.btn .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.toggle{display:inline-flex;align-items:center;gap:8px;font:500 14px/1.2 var(--f-body);color:var(--paper);cursor:pointer}
+.toggle input{accent-color:var(--alarm);width:18px;height:18px}
+
+/* stack */
+.stack{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px}
+@media (max-width:860px){.stack{grid-template-columns:1fr}}
+.layers{display:grid;gap:0}
+.layer{position:relative;display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.layer .ix{font:700 14px/1 var(--f-mono);color:var(--muted);width:36px;height:36px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center}
+.layer h3{font-size:18px}
+.layer p{font-size:14px;color:var(--muted)}
+.layer .tag{font:600 11px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted);text-align:center}
+.layer.trained{border-color:var(--hazard);box-shadow:0 0 0 1px var(--hazard),0 0 40px -12px var(--hazard)}
+.layer.trained .tag{background:var(--hazard);color:var(--on-hazard);border-color:var(--hazard)}
+.layer.trained .ix{border-color:var(--hazard);color:var(--hazard-ink)}
+@media (max-width:560px){.layer{grid-template-columns:1fr}.layer .ix{display:none}.layer .tag{justify-self:start}}
+.bus{position:relative;height:64px;margin-inline:40px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lane{position:relative;overflow:hidden}
+.lane::before{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed var(--line)}
+.lane .lbl{position:absolute;top:50%;transform:translateY(-50%);font:500 11px/1.2 var(--f-mono);color:var(--muted);background:var(--panel);padding:3px 6px;border-radius:4px;border:1px solid var(--line);max-width:calc(100% - 4px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lane.down .lbl{left:0}
+.lane.up .lbl{right:0}
+.pkt{position:absolute;left:calc(50% - 4px);width:9px;height:9px;border-radius:2px}
+.down .pkt{background:var(--hazard);animation:fall 1.6s linear infinite}
+.up .pkt{background:var(--sensor);border-radius:50%;animation:rise 1.2s linear infinite}
+.pkt:nth-child(3){animation-delay:-.8s}
+.up .pkt:nth-child(3){animation-delay:-.6s}
+@keyframes fall{from{top:-10px}to{top:64px}}
+@keyframes rise{from{top:64px}to{top:-10px}}
+@media (prefers-reduced-motion: reduce){.pkt{animation:none!important;top:28px}}
+.side{display:grid;gap:12px;align-content:start}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
+.kv dt{font:600 12px/1.5 var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kv dd{margin:0;min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font:500 12px/1 var(--f-mono);color:var(--muted)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* plaza */
+.plaza{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px}
+@media (max-width:960px){.plaza{grid-template-columns:1fr}}
+@media (max-width:560px){.hud{display:none}}
+.stage{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--ink)}
+.stage canvas{width:100%;aspect-ratio:24/14;height:auto}
+.flash{position:absolute;left:12px;top:12px;font:700 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;padding:8px 10px;border-radius:6px;background:var(--panel);border:1px solid var(--line);color:var(--paper)}
+.flash.success{border-color:var(--sensor);color:var(--sensor)}
+.flash.contact,.flash.wall{border-color:var(--alarm);color:var(--alarm)}
+.hud{position:absolute;right:12px;top:12px;font:600 12px/1.4 var(--f-mono);color:var(--muted);text-align:right;background:color-mix(in srgb,var(--panel) 85%,transparent);padding:6px 8px;border-radius:6px;border:1px solid var(--line)}
+.ctrl{display:grid;gap:16px;align-content:start;min-width:0}
+.ctrl .seg{border-radius:10px;flex-wrap:wrap}
+.ctrl .seg button{border-radius:8px;padding:10px 11px}
+.counters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.counter{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:4px;min-width:0}
+.counter b{font:700 22px/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.counter span{font:500 11px/1.2 var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.curvebox{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px}
+.curvebox canvas{width:100%;height:150px}
+.readout-line{font:600 12px/1.4 var(--f-mono);color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.readout-line b{color:var(--paper);font-weight:600}
+.strip{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.strip canvas{width:100%;height:70px}
+.feats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.feats{grid-template-columns:1fr}}
+.feat{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);cursor:pointer;min-width:0}
+.feat:has(input:checked){border-color:var(--hazard);box-shadow:inset 0 0 0 1px var(--hazard)}
+.feat input{accent-color:var(--hazard);width:18px;height:18px;margin:2px 0 0}
+.feat b{font-size:14px}
+.feat small{grid-column:2;font-size:12.5px;line-height:1.35;color:var(--muted)}
+.feat .kind{font:600 10.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--sensor);margin-left:6px}
+.featmsg{font:600 13px/1.4 var(--f-body);color:var(--hazard-ink);min-height:1.4em}
+.speeds{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
+@media (max-width:560px){.speeds{grid-template-columns:1fr}}
+.explog{grid-column:1/-1;display:grid;gap:8px;border-top:1px dashed var(--line);padding-top:16px}
+.explog table{font-size:13px}
+.explog td,.explog th{padding:6px 8px;white-space:nowrap}
+.explog .empty td{color:var(--muted);white-space:normal}
+.note ul.note-list{grid-column:2;margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:14.5px;color:var(--paper)}
+.note ul.note-list b{color:var(--sensor);font-weight:600}
+@media (max-width:560px){.note ul.note-list{grid-column:1}}
+.scale{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px}
+.scale b{color:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font:600 11px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+th.num{text-align:right}
+.tablewrap{overflow-x:auto}
+
+/* reward */
+.reward{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px}
+@media (max-width:900px){.reward{grid-template-columns:1fr}}
+.reward canvas{width:100%;aspect-ratio:16/10;height:auto;border-radius:10px;border:1px solid var(--line);background:var(--ink)}
+.sliders{display:grid;gap:12px}
+.sl{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}
+.sl label{font-size:14px;font-weight:600}
+.sl output{font:600 13px/1 var(--f-mono);color:var(--hazard-ink)}
+.sl input{grid-column:1/-1;width:100%;accent-color:var(--hazard)}
+.sl small{grid-column:1/-1;color:var(--muted);font-size:12px;line-height:1.3}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.presets .btn{font-size:13px;padding:9px 11px}
+.scores{display:grid;gap:8px}
+.score{display:grid;grid-template-columns:120px 1fr 64px;gap:10px;align-items:center;font-size:14px}
+.score .track{height:12px;border-radius:3px;background:var(--panel-2);position:relative;overflow:hidden}
+.score .fill{position:absolute;top:0;bottom:0;border-radius:3px;transition:left .5s,width .5s,background .3s}
+.score .v{font:600 13px/1 var(--f-mono);text-align:right}
+.score.win .name{color:var(--hazard-ink);font-weight:700}
+.verdict{font:600 15px/1.45 var(--f-body);padding:12px 14px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line)}
+.verdict b{color:var(--hazard-ink)}
+
+/* ppo */
+.ppo{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px}
+@media (max-width:900px){.ppo{grid-template-columns:1fr}}
+.ppo canvas{width:100%;aspect-ratio:16/10;height:auto;border-radius:10px;border:1px solid var(--line);background:var(--ink);touch-action:none;cursor:ew-resize}
+.readout{font:500 14px/1.5 var(--f-body);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.readout .mono{color:var(--hazard-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{font:600 12px/1 var(--f-mono);padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2)}
+.chips span b{color:var(--muted);font-weight:600;margin-right:4px}
+
+/* curves */
+.curves canvas{width:100%;aspect-ratio:2.3/1;height:auto;min-height:260px;border-radius:10px;border:1px solid var(--line);background:var(--ink)}
+.runchips{display:flex;flex-wrap:wrap;gap:8px}
+.runchip{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font:600 13px/1 var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:999px;color:var(--paper)}
+.runchip i{width:12px;height:4px;border-radius:2px;display:inline-block}
+.runchip[aria-pressed="false"]{opacity:.45}
+.runchip:focus-visible{outline:2px solid var(--hazard)}
+
+/* denominator */
+.denom{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:860px){.denom{grid-template-columns:1fr}}
+.metric{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;align-content:start;transition:opacity .5s,filter .5s}
+.metric.hidden{opacity:.25;filter:blur(3px)}
+.metric h3{font-size:16px}
+.metric .sub{font:500 12px/1.3 var(--f-mono);color:var(--muted)}
+.bars{display:grid;gap:8px}
+.brow{display:grid;grid-template-columns:72px 1fr 56px;gap:8px;align-items:center;font:600 13px/1 var(--f-mono)}
+.brow .t{height:16px;background:var(--ink);border-radius:3px;overflow:hidden}
+.brow .b{height:100%;width:0;border-radius:3px;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.brow .val{text-align:right;font-variant-numeric:tabular-nums}
+.lesson{margin-top:16px;font:700 clamp(18px,2.2vw,24px)/1.3 var(--f-display);font-stretch:108%;max-width:40ch}
+.lesson em{font-style:normal;color:var(--hazard-ink)}
+
+/* real or fake */
+.quiz{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:760px){.quiz{grid-template-columns:1fr}}
+.clip{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;transition:border-color .3s,box-shadow .3s}
+.clip video{width:100%;aspect-ratio:2/1;object-fit:cover;background:#000}
+.clip .body{padding:14px 16px;display:grid;gap:10px}
+.det{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.det .badge{font:700 12px/1 var(--f-mono);letter-spacing:.08em;padding:7px 9px;border-radius:6px;background:color-mix(in srgb,var(--sensor) 18%,transparent);color:var(--sensor);border:1px solid var(--sensor)}
+.clip .why{font-size:14px;color:var(--paper)}
+.clip.real{border-color:var(--sensor);box-shadow:0 0 0 1px var(--sensor)}
+.clip.fake{border-color:var(--alarm);box-shadow:0 0 0 1px var(--alarm)}
+.clip.fake .badge{text-decoration:line-through;color:var(--alarm);border-color:var(--alarm);background:color-mix(in srgb,var(--alarm) 15%,transparent)}
+.verdict-tag{font:700 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase}
+.watch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:22px}
+@media (max-width:760px){.watch{grid-template-columns:1fr}}
+.watch figure{margin:0;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.watch video{width:100%;height:auto;background:#000}
+.watch figcaption{padding:12px 14px;font-size:14px;color:var(--muted)}
+.watch figcaption b{color:var(--paper)}
+
+/* industries */
+.ind{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:860px){.ind{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{all:unset;cursor:pointer;display:grid;gap:10px;align-content:start;padding:14px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);min-height:96px;transition:border-color .2s,transform .2s}
+.tile:hover{border-color:var(--muted);transform:translateY(-2px)}
+.tile:focus-visible{outline:2px solid var(--hazard)}
+.tile[aria-pressed="true"]{border-color:var(--hazard);box-shadow:inset 0 0 0 1px var(--hazard)}
+.tile svg{width:30px;height:30px;stroke:var(--hazard);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tile span{font:700 15px/1.25 var(--f-display);font-stretch:105%}
+@media (prefers-reduced-motion: reduce){.tile:hover{transform:none}}
+.detail{margin-top:16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.detail{grid-template-columns:1fr}}
+.dcol{background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:8px;align-content:start}
+.dcol h3{font-size:13px;font-family:var(--f-mono);font-stretch:100%;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.dcol ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:15px}
+.dcol.measure h3{color:var(--hazard-ink)}
+
+/* federate */
+.fed{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:900px){.fed{grid-template-columns:1fr}}
+.fed canvas{width:100%;aspect-ratio:1/1;max-height:520px;height:auto}
+.owns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.owns{grid-template-columns:1fr}}
+.own{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:8px;align-content:start}
+.own h3{font-size:15px}
+.own ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.own.core h3{color:var(--hazard-ink)}
+.own.spoke h3{color:var(--sensor)}
+.why4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:22px}
+@media (max-width:900px){.why4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.why4{grid-template-columns:1fr}}
+.why{border-top:3px solid var(--hazard);background:var(--panel-2);border-radius:0 0 10px 10px;padding:14px 16px;display:grid;gap:6px;align-content:start}
+.why h3{font-size:16px}
+.why p{font-size:14px;color:var(--muted)}
+.timeline{margin-top:26px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;position:relative}
+@media (max-width:860px){.timeline{grid-template-columns:1fr}}
+.step{position:relative;padding:22px 16px 6px 0;display:grid;gap:6px;align-content:start;border-top:2px solid var(--line)}
+.step::before{content:"";position:absolute;top:-8px;left:0;width:14px;height:14px;border-radius:50%;background:var(--ink);border:2px solid var(--hazard)}
+.step .wk{font:700 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--hazard-ink)}
+.step h3{font-size:16px}
+.step p{font-size:14px;color:var(--muted)}
+@media (max-width:860px){.step{border-top:0;border-left:2px solid var(--line);padding:4px 0 18px 22px}.step::before{top:4px;left:-8px}}
+
+footer{padding-block:48px 64px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+footer .wrap{display:grid;gap:10px}
+footer b{color:var(--paper)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.watch:has(> figure:only-child){grid-template-columns:1fr;max-width:960px}
+.race-block{display:flex;flex-direction:column;gap:12px;margin-block:28px;min-width:0}
+.race-title{font-family:var(--display,'Archivo',sans-serif);font-size:clamp(20px,2.4vw,28px);margin:0;text-wrap:balance}
+.race-lede{margin:0;color:var(--muted);max-width:70ch}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..800&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;600;700&display=swap">
+</head>
+<body>
+
+<div class="bar">
+  <div class="wrap">
+    <div class="brand"><i aria-hidden="true"></i>Robot Learning Field Guide</div>
+    <div class="lens" role="group" aria-label="Explain it for">
+      <span class="lens-label">Explain it for</span>
+      <div class="seg" id="lensSeg">
+        <button type="button" data-lens="exec" aria-pressed="true">Executive</button>
+        <button type="button" data-lens="new" aria-pressed="false">New to this</button>
+        <button type="button" data-lens="agents" aria-pressed="false">I build agents</button>
+        <button type="button" data-lens="llm" aria-pressed="false">I train LLMs</button>
+      </div>
+    </div>
+    <div class="tools">
+      <a class="chipbtn" href="deck.html">← Slides</a>
+      <button type="button" class="chipbtn" id="themeBtn" aria-label="Switch light or dark theme">◐ Theme</button>
+    </div>
+  </div>
+</div>
+
+<header class="hero">
+  <canvas id="heroCanvas" aria-hidden="true"></canvas>
+  <div class="scrim" aria-hidden="true"></div>
+  <div class="wrap">
+    <p class="eyebrow">A hands-on tour <b>· legged robots, arms, simulation</b></p>
+    <h1>Practice a billion times. <em>Then</em> meet a person.</h1>
+    <p class="lede">We taught a four-legged robot to steer through crowds using about two billion simulated steps on one workstation. Then we checked whether the results were real, and found the problems worth showing you. Every idea on this page runs live in your browser.</p>
+    <div class="stats">
+      <div class="stat"><b>4,096</b><span>worlds in parallel</span></div>
+      <div class="stat"><b>~2.1B</b><span>steps per 2-hour run</span></div>
+      <div class="stat"><b>1</b><span>workstation GPU</span></div>
+      <div class="stat"><b>7 of 7</b><span>“successes” that were bugs</span></div>
+    </div>
+    <nav class="toc" aria-label="Sections">
+      <a href="#stack"><span>01</span>The stack</a>
+      <a href="#plaza"><span>02</span>Train one</a>
+      <a href="#reward"><span>03</span>Reward</a>
+      <a href="#ppo"><span>04</span>PPO</a>
+      <a href="#curves"><span>05</span>Real curves</a>
+      <a href="#denominator"><span>06</span>Denominator</a>
+      <a href="#real-or-fake"><span>07</span>Real or fake</a>
+      <a href="#industries"><span>08</span>Industries</a>
+      <a href="#federate"><span>09</span>Build it in-house</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- 01 STACK -->
+<section class="sec" id="stack">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">01 <b>· The stack</b></p>
+      <h2>Nobody trains the whole robot. You train one layer.</h2>
+      <p class="core">A working robot is a stack of controllers, each running faster and closer to the metal than the one above. Our patrol robot walks with NVIDIA's pretrained locomotion policy. The layer we trained, with PPO, is the one that decides how to steer around people.</p>
+    </div>
+    <div class="note" data-lens-for="stack"><span class="who"></span><p></p></div>
+    <div class="instrument stack">
+      <div class="layers">
+        <div class="layer"><span class="ix">L1</span><div><h3>Mission</h3><p>Patrol 8 waypoints in a 100 × 150 m compound. Report 6 kinds of objective events. Never judge people.</p></div><span class="tag">rules today</span></div>
+        <div class="bus" aria-hidden="true"><div class="lane down"><span class="pkt"></span><span class="lbl">go to waypoint 3</span><span class="pkt"></span></div><div class="lane up"><span class="pkt"></span><span class="lbl">event: gate left open</span><span class="pkt"></span></div></div>
+        <div class="layer trained"><span class="ix">L2</span><div><h3>Steering skill</h3><p>Lidar + goal in, body velocity out, 10 times a second. A 2-layer, 256-unit network.</p></div><span class="tag">trained here · PPO</span></div>
+        <div class="bus" aria-hidden="true"><div class="lane down"><span class="pkt"></span><span class="lbl">vx 0.8 m/s · yaw +0.2</span><span class="pkt"></span></div><div class="lane up"><span class="pkt"></span><span class="lbl">64 lidar sectors</span><span class="pkt"></span></div></div>
+        <div class="layer"><span class="ix">L3</span><div><h3>Legs</h3><p>Velocity command in, 12 joint targets out. Keeps the body upright on its own.</p></div><span class="tag">pretrained · NVIDIA</span></div>
+        <div class="bus" aria-hidden="true"><div class="lane down"><span class="pkt"></span><span class="lbl">12 joint targets</span><span class="pkt"></span></div><div class="lane up"><span class="pkt"></span><span class="lbl">contacts · body pose</span><span class="pkt"></span></div></div>
+        <div class="layer"><span class="ix">L4</span><div><h3>Physics</h3><p>Isaac Sim with PhysX: contacts, falls, and the ground truth every score is computed from.</p></div><span class="tag">simulator</span></div>
+      </div>
+      <div class="side">
+        <div class="legend"><span><i style="background:var(--hazard)"></i>commands down</span><span><i style="background:var(--sensor);border-radius:50%"></i>sensing up</span></div>
+        <dl class="kv">
+          <dt>Sees</dt><dd>181 lidar rays over 270°, 12 m range, binned into 64 sectors; goal distance and bearing; its own velocity</dd>
+          <dt>Does</dt><dd>forward 0–1 m/s, sideways ±0.5 m/s, turn ±1 rad/s</dd>
+          <dt>Trained</dt><dd>2 h per version on one GPU, 4,096 worlds at once</dd>
+          <dt>Swappable</dt><dd>an LLM planner could replace L1 without retraining L2 or L3</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 PLAZA -->
+<section class="sec" id="plaza">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">02 <b>· Train one yourself</b></p>
+      <h2>A robot learns to cross a crowded plaza, live in this tab.</h2>
+      <p class="core">A 2-D copy of our patrol problem. The yellow robot must reach the ring without touching anyone. Compare three controllers: none, a hand-written planner, and a policy you train right now. Press <b>Train</b> and watch the curve.</p>
+    </div>
+    <div class="note" data-lens-for="plaza"><span class="who"></span><p></p></div>
+    <div class="instrument plaza">
+      <div style="display:grid;gap:12px;min-width:0;align-content:start">
+        <div class="stage">
+          <canvas id="plazaCanvas" width="960" height="560" aria-label="Top-down plaza simulation"></canvas>
+          <div class="flash" id="plazaFlash" aria-live="polite">Hand-written planner</div>
+          <div class="hud mono" id="plazaHud">t 0.0 s</div>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--hazard)"></i>robot</span>
+          <span><i style="background:var(--sensor)"></i>lidar (16 sectors here, 64 in the real run)</span>
+          <span><i style="background:var(--muted);border-radius:50%"></i>pedestrian</span>
+          <span><i style="background:var(--alarm);border-radius:50%"></i>adversarial pedestrian</span>
+        </div>
+        <div class="strip">
+          <div class="legend" style="margin-bottom:4px"><span><i style="background:var(--hazard)"></i>robot speed</span><span><i style="background:var(--violet)"></i>its change (acceleration)</span><span>· this episode</span></div>
+          <canvas id="speedCanvas" width="600" height="70" aria-label="Robot speed and acceleration over the current episode"></canvas>
+        </div>
+        <div style="display:grid;gap:8px">
+          <p class="cap"><b>What the learned brain gets</b>. Changing an input rebuilds the network, so training starts over.</p>
+          <div class="feats">
+            <label class="feat"><input type="checkbox" id="fMem" data-feat="mem"><b>Memory<span class="kind">input</span></b><small>Adds the scans from 0.3 s and 0.6 s ago (+32 inputs), like the real run's v2.</small></label>
+            <label class="feat"><input type="checkbox" id="fSpace" data-feat="space"><b>Personal space<span class="kind">reward</span></b><small>Penalty −0.2·((1 m − c)/1 m)² while anyone is within 1 m, the real v3 weight. Applies live; no restart.</small></label>
+            <label class="feat"><input type="checkbox" id="fVel" data-feat="vel"><b>Trajectory<span class="kind">input</span></b><small>Adds how fast each sector is closing in, from the robot's own scans (+16 inputs). Draws 1.5 s predictions.</small></label>
+            <label class="feat"><input type="checkbox" id="fAcc" data-feat="acc"><b>Trajectory derivative<span class="kind">input</span></b><small>Adds closing acceleration (+16 inputs), which catches people changing course. Draws bending predictions.</small></label>
+          </div>
+          <p class="featmsg" id="featMsg" aria-live="polite"></p>
+          <div class="speeds">
+            <div class="sl"><label for="pedSpeed">People speed</label><output id="oPedSpeed" class="mono">1.0×</output><input type="range" id="pedSpeed" min="0.5" max="2" step="0.1" value="1"></div>
+            <div class="sl"><label for="robotSpeed">Robot top speed</label><output id="oRobotSpeed" class="mono">1.2 m/s</output><input type="range" id="robotSpeed" min="0.4" max="2" step="0.1" value="1.2"></div>
+          </div>
+          <p class="cap" style="font-size:12.5px">Speeds apply live and mark the curve. Encounters are timed to the robot's top speed, so crossings still meet its path. The drawn predictions use the simulator's true motion; the robot only ever gets its own scans.</p>
+          <p class="cap" style="font-size:12.5px"><b>What we saw in this toy</b> (3 seeds, held-out test): with adversarial pedestrians and 400 generations, memory lifted success from 39% to 52% on average, and the trajectory inputs didn't beat the baseline. Without adversarial pedestrians, personal space cut time within 1 m from about 7% to 4% of steps. One seed can tell a different story; that's why the log exists.</p>
+        </div>
+      </div>
+      <div class="ctrl">
+        <div>
+          <p class="cap" style="margin-bottom:8px"><b>Who's driving</b></p>
+          <div class="seg" id="ctrlSeg">
+            <button type="button" data-ctrl="straight" aria-pressed="false">No avoidance</button>
+            <button type="button" data-ctrl="planner" aria-pressed="true">Hand-written</button>
+            <button type="button" data-ctrl="learned" aria-pressed="false">Your policy</button>
+          </div>
+        </div>
+        <div class="row">
+          <button type="button" class="btn primary" id="trainBtn"><span class="dot"></span><span>Train</span></button>
+          <button type="button" class="btn" id="resetBtn">Reset learner</button>
+          <button type="button" class="btn" id="nextBtn">Next episode</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="advBox"> Add adversarial pedestrians (they walk into the robot)</label>
+        <div class="counters">
+          <div class="counter"><b id="cGen">0</b><span>generations</span></div>
+          <div class="counter"><b id="cEp">0</b><span>practice episodes</span></div>
+          <div class="counter"><b id="cSteps">0</b><span>sim steps</span></div>
+          <div class="counter"><b id="cRate">0</b><span>steps / second</span></div>
+        </div>
+        <div class="curvebox">
+          <div class="legend" style="margin-bottom:6px"><span><i style="background:var(--sensor)"></i>reaches goal</span><span><i style="background:var(--alarm)"></i>touches someone</span><span><i style="background:var(--violet)"></i>steps with someone within 1 m</span><span>· 40 held-out episodes</span></div>
+          <canvas id="learnCanvas" width="600" height="150" aria-label="Learning curve"></canvas>
+          <p class="readout-line" id="learnReadout">Dashed lines mark setting changes.</p>
+        </div>
+        <p class="scale">The real run: <b>4,096 worlds</b> at about <b>290,000 steps/s</b> for 2 hours, about <b>2.1 billion steps</b>, with PPO instead of this tab's simpler learner. Your tab: <b id="cCompare">—</b></p>
+        <div>
+          <div class="row" style="justify-content:space-between;margin-bottom:6px"><p class="cap"><b>Held-out test</b>, 100 episodes the learner never trained on</p><button type="button" class="btn" id="testBtn">Run test</button></div>
+          <div class="tablewrap"><table id="testTable"><thead><tr><th>Controller</th><th class="num">Reaches goal</th><th class="num">Touches someone</th><th class="num">Within 1 m</th></tr></thead><tbody>
+            <tr><td>No avoidance</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr><td>Hand-written</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr><td>Your policy</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+          </tbody></table></div>
+          <p class="cap" style="font-size:12.5px;margin-top:6px">“Within 1 m”: share of time steps with someone inside personal space. Uses the current speeds and adversarial setting.</p>
+        </div>
+      </div>
+      <div class="explog">
+        <div class="row" style="justify-content:space-between"><p class="cap"><b>Experiment log</b>: every held-out test adds a row, so you can compare inputs and rewards side by side, the way v1 → v3 went.</p><button type="button" class="btn" id="clearLogBtn">Clear log</button></div>
+        <div class="tablewrap"><table id="logTable"><thead><tr><th>#</th><th>Inputs / reward</th><th class="num">People</th><th class="num">Robot</th><th>Adversarial</th><th class="num">Gens</th><th class="num">Policy: goal</th><th class="num">touch</th><th class="num">1 m</th><th class="num">Planner: goal</th><th class="num">touch</th><th class="num">1 m</th></tr></thead>
+          <tbody><tr class="empty"><td colspan="12">No experiments yet. Train for a while, then press Run test.</td></tr></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 REWARD -->
+<section class="sec" id="reward">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">03 <b>· Reward design</b></p>
+      <h2>You get the behavior you pay for, not the one you meant.</h2>
+      <p class="core">Four candidate routes past the same group of people. The robot will learn whichever route scores highest under your reward. Start from the weights we really used, then try the presets to watch a sensible robot turn into a reckless or frozen one.</p>
+    </div>
+    <div class="note" data-lens-for="reward"><span class="who"></span><p></p></div>
+    <div class="instrument reward">
+      <div style="display:grid;gap:14px;min-width:0;align-content:start">
+        <canvas id="rewardCanvas" width="800" height="500" aria-label="Four candidate routes past pedestrians"></canvas>
+        <div class="verdict" id="rewardVerdict" aria-live="polite"></div>
+        <div class="scores" id="rewardScores"></div>
+      </div>
+      <div style="display:grid;gap:16px;align-content:start;min-width:0">
+        <div class="presets" id="presets">
+          <button type="button" class="btn" data-preset="real" aria-pressed="true">Our real weights</button>
+          <button type="button" class="btn" data-preset="hurry" aria-pressed="false">In a hurry, bumps are cheap</button>
+          <button type="button" class="btn" data-preset="time" aria-pressed="false">Time penalty too high</button>
+          <button type="button" class="btn" data-preset="scared" aria-pressed="false">Terrified of people</button>
+        </div>
+        <div class="sliders">
+          <div class="sl"><label for="wProgress">Progress, per metre closed</label><output id="oProgress">+1.00</output><input type="range" id="wProgress" min="0" max="3" step="0.05" value="1"></div>
+          <div class="sl"><label for="wTime">Time, per step (0.1 s)</label><output id="oTime">−0.010</output><input type="range" id="wTime" min="0" max="0.2" step="0.005" value="0.01"></div>
+          <div class="sl"><label for="wNear">Near miss, inside 0.3 m</label><output id="oNear">−1.0</output><input type="range" id="wNear" min="0" max="20" step="0.5" value="1"></div>
+          <div class="sl"><label for="wContact">Contact with a person</label><output id="oContact">−10</output><input type="range" id="wContact" min="0" max="20" step="1" value="10"></div>
+          <div class="sl"><label for="wSpace">Personal space, inside 1 m</label><output id="oSpace">−0.20</output><input type="range" id="wSpace" min="0" max="2" step="0.05" value="0.2"><small>Success bonus +10 and wall −10 stay fixed.</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 PPO -->
+<section class="sec" id="ppo">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">04 <b>· The algorithm</b></p>
+      <h2>PPO: improve, but never too much at once.</h2>
+      <p class="core">Proximal Policy Optimization trains on the robot's own recent experience. For each action it compares the new policy's probability with the old one's (the ratio <span class="mono">r</span>) and weights it by how much better than expected the action turned out (the advantage <span class="mono">A</span>). The clip stops one batch of luck from rewriting the policy. Drag the handle.</p>
+    </div>
+    <div class="note" data-lens-for="ppo"><span class="who"></span><p></p></div>
+    <div class="instrument ppo">
+      <div style="display:grid;gap:12px;min-width:0;align-content:start">
+        <canvas id="ppoCanvas" width="800" height="500" aria-label="PPO clipped objective plot"></canvas>
+        <div class="row">
+          <div class="seg" id="advSeg"><button type="button" data-adv="1" aria-pressed="true">Better than expected (A &gt; 0)</button><button type="button" data-adv="-1" aria-pressed="false">Worse (A &lt; 0)</button></div>
+        </div>
+        <div class="sl"><label for="ratio">Probability ratio r = π<sub>new</sub> / π<sub>old</sub></label><output id="oRatio" class="mono">1.00</output><input type="range" id="ratio" min="0.2" max="2" step="0.01" value="1.35"></div>
+        <div class="sl"><label for="eps">Clip range ε</label><output id="oEps" class="mono">0.20</output><input type="range" id="eps" min="0.05" max="0.5" step="0.01" value="0.2"></div>
+      </div>
+      <div style="display:grid;gap:14px;align-content:start;min-width:0">
+        <div class="readout" id="ppoReadout" aria-live="polite"></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Piece</th><th>Our robot</th><th>RLHF on an LLM</th></tr></thead>
+          <tbody>
+            <tr><td>Action</td><td>3 velocities, 10 Hz</td><td>next token</td></tr>
+            <tr><td>Episode</td><td>one patrol leg, up to 70 s</td><td>one response</td></tr>
+            <tr><td>Reward</td><td>physics: progress, contact, time</td><td>a learned reward model</td></tr>
+            <tr><td>Batch</td><td>4,096 worlds × 32 steps</td><td>prompts × samples</td></tr>
+            <tr><td>Guardrail</td><td>clip 0.2, KL stop 0.03</td><td>clip + KL to reference</td></tr>
+            <tr><td>Hacking</td><td>visible: watch the video</td><td>hidden in text</td></tr>
+          </tbody>
+        </table></div>
+        <div class="chips">
+          <span><b>γ</b>0.99</span><span><b>λ</b>0.95</span><span><b>clip</b>0.2</span><span><b>epochs</b>4 × 4 minibatches</span><span><b>lr</b>3e-4</span><span><b>entropy</b>0.003</span><span><b>target KL</b>0.03</span><span><b>rollout</b>32</span><span><b>nets</b>actor + critic, 256 × 256 ELU</span><span><b>output</b>tanh-squashed Gaussian</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 CURVES -->
+<section class="sec" id="curves">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">05 <b>· The real training runs</b></p>
+      <h2>Four versions, two hours each, one honest plateau.</h2>
+      <p class="core">These are the actual logs. The first version faced only people walking in straight lines and reached 96% training success. Each later version made the world harder or the robot's memory longer, and success settled between 30% and 41%.</p>
+    </div>
+    <div class="note" data-lens-for="curves"><span class="who"></span><p></p></div>
+    <div class="instrument curves" style="display:grid;gap:14px">
+      <div class="row" style="justify-content:space-between">
+        <div class="seg" id="metricSeg">
+          <button type="button" data-metric="2" aria-pressed="true">Success</button>
+          <button type="button" data-metric="3" aria-pressed="false">Contact</button>
+          <button type="button" data-metric="4" aria-pressed="false">Mean return</button>
+          <button type="button" data-metric="5" aria-pressed="false">Adversarial hit rate</button>
+        </div>
+        <div class="runchips" id="runChips"></div>
+      </div>
+      <canvas id="curveCanvas" width="1100" height="480" aria-label="Training curves for four runs"></canvas>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Version</th><th>What changed</th><th>Why</th><th class="num">Steps</th></tr></thead>
+        <tbody>
+          <tr><td>Legacy</td><td>straight-line walkers only</td><td>first baseline</td><td class="num">4.0 B</td></tr>
+          <tr><td>v1</td><td>adds adversarial pedestrians that react</td><td>pre-timed crowds were unfair to faster robots</td><td class="num">2.1 B</td></tr>
+          <tr><td>v2</td><td>remembers scans 0.3 s and 0.6 s back</td><td>0.1 s of history hid how pedestrians moved</td><td class="num">2.2 B</td></tr>
+          <tr><td>v3</td><td>everyday crowd density + personal-space reward</td><td>it bumped ordinary people; nothing moved</td><td class="num">2.0 B</td></tr>
+          <tr><td>v4</td><td>planned: fix the go/stop speed</td><td>speed noise pinned at its ceiling (a suspect)</td><td class="num">—</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 DENOMINATOR -->
+<section class="sec" id="denominator">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">06 <b>· Report the denominator</b></p>
+      <h2>The headline said “tie.” The full table said otherwise.</h2>
+      <p class="core">80 held-out patrols on seeds no policy ever trained on, three learned versions against the hand-written planner. Lower is better everywhere. Start with the one number we set out to improve.</p>
+    </div>
+    <div class="note" data-lens-for="denominator"><span class="who"></span><p></p></div>
+    <div class="instrument" style="display:grid;gap:16px">
+      <div class="row"><button type="button" class="btn primary" id="denomBtn">Show the full table</button><span class="cap" id="denomCap">Showing 1 of 3 metrics</span></div>
+      <div class="denom">
+        <div class="metric" id="m0"><h3>Adversarial pedestrians: hit per commit</h3><p class="sub">% of intercept attempts that landed</p><div class="bars"></div></div>
+        <div class="metric hidden" id="m1"><h3>Runs that bumped an ordinary person</h3><p class="sub">out of 80 patrols</p><div class="bars"></div></div>
+        <div class="metric hidden" id="m2"><h3>Median patrol time</h3><p class="sub">seconds, same route</p><div class="bars"></div></div>
+      </div>
+      <p class="lesson" id="denomLesson">On the metric we trained for, every version looks <em>about even</em> with the planner.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 07 REAL OR FAKE -->
+<section class="sec" id="real-or-fake">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">07 <b>· Watch the video, not the table</b></p>
+      <h2>Both clips passed the success check. Only one succeeded.</h2>
+      <p class="core">A robot arm learning to put an object in a bowl, scored overnight by an automatic check. Pick the real success.</p>
+    </div>
+    <div class="note" data-lens-for="real-or-fake"><span class="who"></span><p></p></div>
+    <div class="instrument" style="display:grid;gap:14px">
+      <div class="quiz" id="quiz">
+        <div class="clip" data-truth="fake">
+          <video src="media/arm_fake_success.mp4" poster="media/arm_fake_success_still.jpg" muted loop playsinline autoplay controls preload="metadata" aria-label="Arm episode A, scene and wrist camera"></video>
+          <div class="body">
+            <div class="det"><span class="verdict-tag">Episode A</span><span class="badge">CHECK: SUCCESS</span></div>
+            <button type="button" class="btn" data-pick>This one is real</button>
+            <p class="why" hidden>Fake. This placement spawned the bowl against the robot with the object already under it. The arm bumped the bowl, and the check (object near the bowl's centre, low enough) fired. Every evaluation reused one seed, so this same bad placement “succeeded” for several checkpoints.</p>
+          </div>
+        </div>
+        <div class="clip" data-truth="real">
+          <video src="media/arm_first_success.mp4" poster="media/arm_first_success_still.jpg" muted loop playsinline autoplay controls preload="metadata" aria-label="Arm episode B, scene and wrist camera"></video>
+          <div class="body">
+            <div class="det"><span class="verdict-tag">Episode B</span><span class="badge">CHECK: SUCCESS</span></div>
+            <button type="button" class="btn" data-pick>This one is real</button>
+            <p class="why" hidden>Real. The fine-tuned 7B world-action model grasps the mug, lifts, carries and places it. Our first genuine closed-loop success: 1 of 6 tries, with the jaw opened before handing over.</p>
+          </div>
+        </div>
+      </div>
+      <p class="lesson" id="quizLesson" hidden>The overnight run reported <em>7 successes</em>. All 7 were bugs in the check. The true score was 0, and only reviewing the videos showed it.</p>
+      <div class="race-block" id="race">
+        <h3 class="race-title">Watch the whole run, not the last screen</h3>
+        <p class="race-lede">Same seed, three drivers, the full six-minute patrol. Each lane ticks off its checkpoints; a dot pops when a robot finishes and a red diamond marks a fall. Watch it to the end: the race exposes a flaw in the <em>test</em>, not the robots. The walkers kept a timetable fitted to the slow robot, so the two faster robots passed every encounter before its walker arrived and never faced the test. The only contacts were late walkers reaching the charger after the robots parked.</p>
+        <div class="race" style="--rp-h:clamp(240px,52vw,560px);--rp-fs:18px" data-src="media/race_seed21.mp4" data-poster="media/race_seed21_still.jpg" data-rate="8" data-note="Lesson: if a test doesn't react to the system under test, a faster system skips it. Every planner-vs-RL comparison before this was confounded, so the crowd was rebuilt with pedestrians that react to whichever robot is in front of them. The learned policy here is the early one, trained against straight-line walkers."></div>
+      </div>
+      <div class="watch">
+        <figure><video src="media/readers_vs_control.mp4" poster="media/readers_vs_control_still.jpg" muted loop playsinline autoplay controls preload="metadata" aria-label="Robot with avoidance next to the control without it"></video><figcaption><b>With avoidance vs the control.</b> People reading as they walk never react. With avoidance: 0 contacts, closest pass 0.47 m. The control robot gets knocked over.</figcaption></figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 INDUSTRIES -->
+<section class="sec" id="industries">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">08 <b>· Across industries</b></p>
+      <h2>Every industry gets the same three questions.</h2>
+      <p class="core">What will the machine do, what can we break in simulation before it ships, and what will we measure once it's working near people and property? Pick a field.</p>
+    </div>
+    <div class="note" data-lens-for="industries"><span class="who"></span><p></p></div>
+    <div class="instrument">
+      <div class="ind" id="indGrid"></div>
+      <div class="detail" id="indDetail"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 FEDERATE -->
+<section class="sec" id="federate">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">09 <b>· Build the capability</b></p>
+      <h2>It isn't mature yet. That's the reason to start.</h2>
+      <p class="core">The organizations that will be ready are the ones with people who already know how to test these systems. Our proposal is a small core team that builds simulation, evaluation and training skills once and lends them to every business unit and partner.</p>
+    </div>
+    <div class="note" data-lens-for="federate"><span class="who"></span><p></p></div>
+    <div class="instrument" style="display:grid;gap:8px">
+      <div class="fed">
+        <canvas id="fedCanvas" width="560" height="560" aria-label="Hub and spoke diagram: core team and business units"></canvas>
+        <div style="display:grid;gap:12px;min-width:0">
+          <div class="legend"><span><i style="background:var(--hazard)"></i>out: recipes, harness, scorecards</span><span><i style="background:var(--sensor);border-radius:50%"></i>back: scenarios, incidents, failure videos</span></div>
+          <div class="owns">
+            <div class="own core"><h3>The core owns</h3><ul><li>simulator setup and scenario templates</li><li>the evaluation harness: controls, held-out seeds, video review</li><li>a metrics library normalized by exposure</li><li>training recipes and shared compute</li><li>a protocol for testing a vendor's system</li></ul></div>
+            <div class="own spoke"><h3>Each unit owns</h3><ul><li>its scenarios and edge cases</li><li>site maps and real incident data</li><li>acceptance thresholds</li><li>feedback from operations</li></ul></div>
+          </div>
+        </div>
+      </div>
+      <div class="why4">
+        <div class="why"><h3>The tools are open</h3><p>Isaac Lab, LeRobot, and open world-action models like FLUX 3 Action all run on one workstation.</p></div>
+        <div class="why"><h3>Training is cheap</h3><p>2 billion steps took 2 hours. Knowing whether the result was real took days.</p></div>
+        <div class="why"><h3>Vendors arrive first</h3><p>You'll be asked to approve, buy or answer for systems you didn't build.</p></div>
+        <div class="why"><h3>Skills transfer</h3><p>Agent and LLM teams already have half of it: rollouts, evals, reward design.</p></div>
+      </div>
+      <div class="timeline" aria-label="A 90-day starter path">
+        <div class="step"><span class="wk">Weeks 1–2</span><h3>One workstation</h3><p>Install a simulator, train a toy task, run a pretrained robot.</p></div>
+        <div class="step"><span class="wk">Weeks 3–4</span><h3>One real scenario</h3><p>Rebuild a situation from your own operations, with a scripted baseline.</p></div>
+        <div class="step"><span class="wk">Weeks 5–8</span><h3>Evaluation first</h3><p>Controls, held-out seeds, video review, per-exposure metrics. Before any training.</p></div>
+        <div class="step"><span class="wk">Weeks 9–12</span><h3>Train, score, share</h3><p>Train a policy or test a vendor's. Publish the full table. Hand the kit to a second team.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b>Credits.</b> Simulation: NVIDIA Isaac Sim and Isaac Lab, including the Spot robot asset and its pretrained locomotion policy. Arm model: FLUX 3 Action © Black Forest Labs, under the FLUX Kommunity License. Robot-arm data references the DROID dataset (CC BY 4.0). SO-101 open-hardware arm and the LeRobot library from Hugging Face. The compound, scenarios and all scores on this page are our own simulated work.</p>
+    <p>The plaza in section 02 is a simplified 2-D version, trained with evolution strategies so it fits in a browser. All other numbers come from the real runs.</p>
+  </div>
+</footer>
+
+<script>
+// ---- Plaza sim + ES learner (shared by page and node test) ----
+const SIM = (() => {
+  const W = 24, H = 14, DT = 0.1, R_ROBOT = 0.35, R_PED = 0.3, NSEC = 16, FOV = Math.PI * 1.5, RANGE = 8, MAXT = 400;
+  const SPACE_R = 1.0, HISTN = 7; // personal-space radius (m); scan history ring: now .. 0.6 s back
+  function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  // opts: { adversarial, mem, vel, acc, space, spaceW, pedSpeed, robotSpeed }
+  function makeEpisode(seed, opts) {
+    opts = opts || {};
+    const ps = opts.pedSpeed || 1, vmax = opts.robotSpeed || 1.2;
+    const r = rng(seed * 2654435761 + 12345);
+    const ry = 3 + r() * 8, gy = 3 + r() * 8;
+    const goal = { x: 22, y: gy };
+    const head = Math.atan2(gy - ry, 22 - 2) + (r() - 0.5) * 1.2;
+    const robot = { x: 2, y: ry, th: head, v: 0, w: 0 };
+    const peds = [];
+    const n = 4 + Math.floor(r() * 4);
+    for (let i = 0; i < n; i++) {
+      const kind = r();
+      const px = 5 + r() * 14; // x where it meets the robot's line
+      const lineY = ry + (gy - ry) * (px - 2) / 20;
+      // meet time scales with the robot's top speed so encounters still cross its path
+      const tMeet = (px - 2) / ((0.9 + r() * 0.5) * vmax / 1.2) + (r() - 0.5) * 4;
+      if (kind < 0.55) { // crossing
+        const s = (0.7 + r() * 0.7) * ps, dir = r() < 0.5 ? 1 : -1;
+        peds.push({ x: px + (r() - 0.5), y: lineY - dir * s * tMeet, vx: (r() - 0.5) * 0.2 * ps, vy: dir * s, kind: 'walker' });
+      } else if (kind < 0.85) { // head-on
+        const s = (0.6 + r() * 0.6) * ps;
+        peds.push({ x: px + s * tMeet, y: lineY + (r() - 0.5) * 1.2, vx: -s, vy: (r() - 0.5) * 0.1 * ps, kind: 'walker' });
+      } else { // standing on the line
+        peds.push({ x: px, y: lineY + (r() - 0.5) * 0.8, vx: 0, vy: 0, kind: 'standing' });
+      }
+    }
+    const nAdv = opts.adversarial ? 1 + Math.floor(r() * 2) : 0;
+    for (let i = 0; i < nAdv; i++) {
+      const px = 8 + r() * 10, side = r() < 0.5 ? 1 : 13;
+      peds.push({ x: px, y: side, vx: 0, vy: 0, kind: 'adversarial', state: 'idle', speed: (1.1 + r() * 0.4) * ps });
+    }
+    for (const p of peds) { p.ax = 0; p.ay = 0; }
+    const hist = []; for (let k = 0; k < HISTN; k++) hist.push(new Float64Array(NSEC));
+    return { robot, goal, peds, opts, vmax, hist, hlen: 0, hpos: 0, t: 0, done: false, outcome: null, ret: 0, prevA0: 0, prevA1: 0,
+      prevDist: Math.hypot(goal.x - robot.x, goal.y - robot.y), minClear: 99, contacts: 0, intr: 0, speedHist: [] };
+  }
+  // lidar: NSEC sectors over FOV centred on heading; returns min range / RANGE (1 = clear)
+  function scan(ep, out) {
+    const { robot, peds } = ep;
+    for (let k = 0; k < NSEC; k++) out[k] = 1;
+    const secW = FOV / NSEC;
+    for (const p of peds) {
+      const dx = p.x - robot.x, dy = p.y - robot.y, d = Math.hypot(dx, dy);
+      if (d > RANGE + R_PED) continue;
+      let a = Math.atan2(dy, dx) - robot.th; a = Math.atan2(Math.sin(a), Math.cos(a));
+      const hw = Math.asin(Math.min(1, R_PED / Math.max(d, 1e-3)));
+      const k0 = Math.floor((a - hw + FOV / 2) / secW), k1 = Math.floor((a + hw + FOV / 2) / secW);
+      const rr = Math.max(0, d - R_PED) / RANGE;
+      for (let k = Math.max(0, k0); k <= Math.min(NSEC - 1, k1); k++) if (rr < out[k]) out[k] = rr;
+    }
+    for (let k = 0; k < NSEC; k++) { // walls y=0, y=H
+      const a = robot.th - FOV / 2 + (k + 0.5) * secW, sy = Math.sin(a);
+      let t = 99;
+      if (sy > 1e-3) t = (H - robot.y) / sy; else if (sy < -1e-3) t = -robot.y / sy;
+      const rr = Math.max(0, t) / RANGE; if (rr < out[k]) out[k] = rr;
+    }
+    return out;
+  }
+  // observation size follows the feature set: base 20, memory +32, closing speed +16, closing acceleration +16
+  function obsDim(f) { f = f || {}; return NSEC + 4 + (f.mem ? 2 * NSEC : 0) + (f.vel ? NSEC : 0) + (f.acc ? NSEC : 0); }
+  const OBS = obsDim({});
+  // the scan k control steps ago; early in an episode the oldest scan we have stands in
+  function lag(ep, k) { const kk = Math.min(k, ep.hlen - 1); return ep.hist[(ep.hpos - 1 - kk + HISTN * 2) % HISTN]; }
+  // observe() is called once per control step: it records the scan into the ring buffer, then builds the vector
+  function observe(ep, out) {
+    const cur = ep.hist[ep.hpos]; scan(ep, cur); ep.hpos = (ep.hpos + 1) % HISTN; if (ep.hlen < HISTN) ep.hlen++;
+    const f = ep.opts, { robot, goal } = ep;
+    let o = 0;
+    for (let k = 0; k < NSEC; k++) out[o++] = cur[k];
+    const dx = goal.x - robot.x, dy = goal.y - robot.y, d = Math.hypot(dx, dy);
+    const b = Math.atan2(dy, dx) - robot.th;
+    out[o++] = Math.cos(b); out[o++] = Math.sin(b); out[o++] = Math.min(d, 10) / 10; out[o++] = robot.v / ep.vmax;
+    if (f.mem) { const l3 = lag(ep, 3), l6 = lag(ep, 6); for (let k = 0; k < NSEC; k++) out[o++] = l3[k]; for (let k = 0; k < NSEC; k++) out[o++] = l6[k]; }
+    if (f.vel || f.acc) {
+      const l3 = lag(ep, 3), l6 = lag(ep, 6);
+      // closing speed per sector from the robot's own scans: -(Δrange)/0.3 s, in m/s, scaled by 3 m/s and clipped
+      if (f.vel) for (let k = 0; k < NSEC; k++) { const v = -(cur[k] - l3[k]) * RANGE / 0.3; out[o++] = Math.max(-1, Math.min(1, v / 3)); }
+      // closing acceleration: second difference over 0.3 s steps, in m/s², scaled by 6 m/s² and clipped
+      if (f.acc) for (let k = 0; k < NSEC; k++) { const a = -(cur[k] - 2 * l3[k] + l6[k]) * RANGE / 0.09; out[o++] = Math.max(-1, Math.min(1, a / 6)); }
+    }
+    return out;
+  }
+  const RW = { progress: 1, time: 0.01, near: 1, contact: 10, wall: 10, success: 10, smooth: 0.01 };
+  function step(ep, a0, a1) {
+    const { robot, goal, peds } = ep, f = ep.opts;
+    const v = (a0 + 1) / 2 * ep.vmax, w = a1 * 1.5;
+    robot.w = w; robot.th += w * DT;
+    robot.x += v * Math.cos(robot.th) * DT; robot.y += v * Math.sin(robot.th) * DT;
+    ep.speedHist.push(v); robot.v = v;
+    let r = -RW.time - RW.smooth * ((a0 - ep.prevA0) ** 2 + (a1 - ep.prevA1) ** 2);
+    ep.prevA0 = a0; ep.prevA1 = a1;
+    let minc = 99;
+    for (const p of peds) {
+      const ovx = p.vx, ovy = p.vy;
+      if (p.kind === 'adversarial') {
+        const dx = robot.x - p.x, dy = robot.y - p.y, d = Math.hypot(dx, dy);
+        if (p.state === 'idle' && d < 7) p.state = 'lock';
+        if (p.state === 'lock') { // aim at a lead point, re-aiming every step until it commits
+          const lx = robot.x + Math.cos(robot.th) * robot.v * 1.0 - p.x, ly = robot.y + Math.sin(robot.th) * robot.v * 1.0 - p.y, ld = Math.hypot(lx, ly) || 1;
+          p.vx = lx / ld * p.speed; p.vy = ly / ld * p.speed;
+          if (d < 2.4) p.state = 'commit';
+        }
+      }
+      p.ax = 0.7 * p.ax + 0.3 * (p.vx - ovx) / DT; p.ay = 0.7 * p.ay + 0.3 * (p.vy - ovy) / DT;
+      p.x += p.vx * DT; p.y += p.vy * DT;
+      const c = Math.hypot(p.x - robot.x, p.y - robot.y) - R_PED - R_ROBOT;
+      if (c < minc) minc = c;
+    }
+    if (minc < ep.minClear) ep.minClear = minc;
+    if (minc < SPACE_R) ep.intr++;
+    if (minc < 0.3 && minc > 0) r -= RW.near * (0.3 - minc) / 0.3;
+    if (f.space && minc > 0 && minc < SPACE_R) r -= (f.spaceW || 0.2) * ((SPACE_R - minc) / SPACE_R) ** 2;
+    const dist = Math.hypot(goal.x - robot.x, goal.y - robot.y);
+    r += RW.progress * (ep.prevDist - dist); ep.prevDist = dist;
+    ep.t++;
+    if (minc <= 0) { r -= RW.contact; ep.done = true; ep.outcome = 'contact'; ep.contacts++; }
+    else if (robot.y < R_ROBOT || robot.y > H - R_ROBOT || robot.x < 0 || robot.x > W) { r -= RW.wall; ep.done = true; ep.outcome = 'wall'; }
+    else if (dist < 0.8) { r += RW.success; ep.done = true; ep.outcome = 'success'; }
+    else if (ep.t >= MAXT) { ep.done = true; ep.outcome = 'timeout'; }
+    ep.ret += r;
+    return r;
+  }
+  // ---- policies ----
+  const HID = 12;
+  const npFor = d => d * HID + HID + HID * 2 + 2;
+  const NP = npFor(OBS);
+  function act(params, obs, out) {
+    const D = obs.length, h = new Float64Array(HID);
+    for (let j = 0; j < HID; j++) { let s = params[D * HID + j]; for (let i = 0; i < D; i++) s += params[i * HID + j] * obs[i]; h[j] = Math.tanh(s); }
+    const o = D * HID + HID;
+    for (let k = 0; k < 2; k++) { let s = params[o + HID * 2 + k]; for (let j = 0; j < HID; j++) s += params[o + j * 2 + k] * h[j]; out[k] = Math.tanh(s); }
+    return out;
+  }
+  function straight(ep, obs, out) { // no avoidance: drive at the goal
+    const { robot, goal } = ep; let b = Math.atan2(goal.y - robot.y, goal.x - robot.x) - robot.th; b = Math.atan2(Math.sin(b), Math.cos(b));
+    out[0] = 1; out[1] = Math.max(-1, Math.min(1, b * 2)); return out;
+  }
+  function planner(ep, obs, out) { // hand-written: goal attraction + time-to-collision repulsion (ignores the feature inputs)
+    const { robot, goal, peds } = ep;
+    let fx = goal.x - robot.x, fy = goal.y - robot.y; const gd = Math.hypot(fx, fy); fx /= gd; fy /= gd;
+    let slow = 1;
+    const vx = Math.cos(robot.th) * Math.max(robot.v, 0.5), vy = Math.sin(robot.th) * Math.max(robot.v, 0.5);
+    for (const p of peds) {
+      for (const tau of [0, 0.7, 1.4]) {
+        const px = p.x + p.vx * tau - vx * tau, py = p.y + p.vy * tau - vy * tau; // relative future position
+        const dx = robot.x - px, dy = robot.y - py, d = Math.hypot(dx, dy) - R_PED - R_ROBOT;
+        const reach = 1.9 - tau * 0.4;
+        if (d < reach) { const k = (reach - d) / reach, dd = Math.hypot(dx, dy) || 1; fx += dx / dd * k * 2.6; fy += dy / dd * k * 2.6; if (d < 0.6 && tau < 1) slow = Math.min(slow, 0.2); }
+      }
+    }
+    fy += (robot.y < 1.5 ? 1.2 : 0) - (robot.y > H - 1.5 ? 1.2 : 0);
+    let b = Math.atan2(fy, fx) - robot.th; b = Math.atan2(Math.sin(b), Math.cos(b));
+    out[0] = Math.max(-1, slow * 2 - 1 - Math.min(1, Math.abs(b)) * 0.8); out[1] = Math.max(-1, Math.min(1, b * 2.5)); return out;
+  }
+  function rollout(policyFn, params, seed, opts) {
+    const ep = makeEpisode(seed, opts), obs = new Float64Array(obsDim(opts)), a = new Float64Array(2);
+    while (!ep.done) { observe(ep, obs); policyFn === act ? act(params, obs, a) : policyFn(ep, obs, a); step(ep, a[0], a[1]); }
+    return ep;
+  }
+  // ---- Evolution strategies (antithetic, centred ranks, Adam) ----
+  function makeES(seed, cfg) {
+    cfg = Object.assign({ pairs: 16, sigma: 0.08, lr: 0.03, eps: 3, adversarial: false }, cfg || {});
+    const r = rng(seed);
+    const gauss = () => { let u = 0, v = 0; while (u === 0) u = r(); v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    const D = obsDim(cfg), NPc = npFor(D);
+    const theta = new Float64Array(NPc); for (let i = 0; i < NPc; i++) theta[i] = gauss() * 0.1;
+    const m = new Float64Array(NPc), v = new Float64Array(NPc);
+    const st = { theta, D, gen: 0, episodes: 0, steps: 0, cfg, history: [] };
+    let epSeed = 1000;
+    st.genIter = function* () {
+      const P = cfg.pairs, noise = [], fit = new Float64Array(2 * P);
+      const seeds = []; for (let e = 0; e < cfg.eps; e++) seeds.push(epSeed++);
+      let succ = 0, cont = 0, n = 0;
+      const cand = new Float64Array(NPc);
+      for (let p = 0; p < P; p++) {
+        const eps = new Float64Array(NPc); for (let i = 0; i < NPc; i++) eps[i] = gauss(); noise.push(eps);
+        for (let s = 0; s < 2; s++) {
+          const sg = s ? -1 : 1; for (let i = 0; i < NPc; i++) cand[i] = theta[i] + sg * cfg.sigma * eps[i];
+          let tot = 0;
+          for (const sd of seeds) { const ep = rollout(act, cand, sd, cfg); tot += ep.ret; st.steps += ep.t; st.episodes++; n++; if (ep.outcome === 'success') succ++; if (ep.outcome === 'contact') cont++; }
+          fit[2 * p + s] = tot / seeds.length;
+          yield null;
+        }
+      }
+      const idx = Array.from(fit.keys()).sort((a, b) => fit[a] - fit[b]); const rk = new Float64Array(2 * P);
+      idx.forEach((k, i) => rk[k] = i / (2 * P - 1) - 0.5);
+      const g = new Float64Array(NPc);
+      for (let p = 0; p < P; p++) { const w = rk[2 * p] - rk[2 * p + 1]; const e = noise[p]; for (let i = 0; i < NPc; i++) g[i] += w * e[i]; }
+      st.gen++; const b1 = 0.9, b2 = 0.999, lr = cfg.lr * (0.4 + 0.6 * Math.exp(-st.gen / 120));
+      for (let i = 0; i < NPc; i++) { const gi = g[i] / (2 * P * cfg.sigma) - 0.005 * theta[i]; m[i] = b1 * m[i] + (1 - b1) * gi; v[i] = b2 * v[i] + (1 - b2) * gi * gi; theta[i] += lr * (m[i] / (1 - b1 ** st.gen)) / (Math.sqrt(v[i] / (1 - b2 ** st.gen)) + 1e-8); }
+      const rec = { gen: st.gen, success: succ / n, contact: cont / n, meanFit: fit.reduce((a, b) => a + b) / fit.length };
+      st.history.push(rec); return rec;
+    };
+    st.generation = () => { const it = st.genIter(); let r; do { r = it.next(); } while (!r.done); return r.value; };
+    return st;
+  }
+  // success, contact = share of episodes; intrusion = share of steps with someone inside SPACE_R
+  function evaluate(policyFn, params, seeds, opts) {
+    let s = 0, c = 0, steps = 0, intr = 0;
+    for (const sd of seeds) { const ep = rollout(policyFn, params, sd, opts); if (ep.outcome === 'success') s++; if (ep.outcome === 'contact') c++; steps += ep.t; intr += ep.intr; }
+    return { success: s / seeds.length, contact: c / seeds.length, intrusion: steps ? intr / steps : 0, steps };
+  }
+  return { W, H, DT, R_ROBOT, R_PED, NSEC, FOV, RANGE, OBS, NP, SPACE_R, rng, makeEpisode, observe, obsDim, npFor, step, act, straight, planner, rollout, makeES, evaluate, scan };
+})();
+if (typeof module !== 'undefined') module.exports = SIM;
+
+</script>
+<script>
+const CURVES = {"legacy":{"pts":[[0.0001,0.0,0.8344,0.1029,19.8031],[0.0334,1.0,0.9065,0.0517,23.3284],[0.0667,1.9,0.9254,0.0401,23.9516],[0.1,2.9,0.9282,0.0346,24.1832],[0.1333,3.9,0.9293,0.0317,24.2526],[0.1666,4.9,0.9362,0.0294,24.3998],[0.1999,5.9,0.943,0.022,24.6171],[0.2332,6.9,0.9397,0.0281,24.5095],[0.2665,7.9,0.9324,0.0334,24.3028],[0.2998,8.9,0.9362,0.0336,24.4012],[0.3331,10.0,0.9426,0.031,24.547],[0.3663,11.0,0.9416,0.03,24.5638],[0.3996,12.0,0.9427,0.0288,24.5975],[0.4329,13.0,0.9382,0.0329,24.4485],[0.4662,14.0,0.9443,0.0284,24.6226],[0.4995,15.0,0.9491,0.0269,24.7509],[0.5328,16.0,0.9542,0.0246,24.8896],[0.5661,16.9,0.9529,0.0251,24.8502],[0.5994,17.9,0.9516,0.026,24.8067],[0.6327,18.9,0.9512,0.027,24.82],[0.666,19.9,0.9501,0.0294,24.7515],[0.6993,20.9,0.9534,0.0268,24.8573],[0.7326,21.9,0.9554,0.0255,24.9149],[0.7659,23.0,0.9558,0.0246,24.9281],[0.7991,24.0,0.9559,0.0253,24.9381],[0.8324,25.1,0.9568,0.026,24.9244],[0.8657,26.1,0.96,0.0241,25.0172],[0.899,27.1,0.9613,0.024,25.0661],[0.9323,28.1,0.9586,0.0258,24.9718],[0.9656,29.1,0.9595,0.027,24.9887],[0.9989,30.1,0.9603,0.0255,25.0488],[1.0322,31.0,0.9601,0.0255,25.0335],[1.0655,32.0,0.9617,0.0242,25.0838],[1.0988,33.0,0.96,0.0249,25.0469],[1.1321,34.0,0.9609,0.0255,25.05],[1.1654,35.0,0.9607,0.0255,25.019],[1.1987,35.9,0.961,0.0254,25.029],[1.2319,36.9,0.962,0.0241,25.0514],[1.2652,37.9,0.964,0.0222,25.1357],[1.2985,38.9,0.9619,0.024,25.0417],[1.3318,40.0,0.964,0.0226,25.1212],[1.3651,41.0,0.9605,0.0254,25.0075],[1.3984,42.0,0.9643,0.0237,25.1253],[1.4317,43.1,0.9644,0.0223,25.1276],[1.465,44.1,0.959,0.0266,24.9579],[1.4983,45.1,0.9608,0.0254,25.0132],[1.5316,46.1,0.9609,0.0246,25.0381],[1.5649,47.0,0.9604,0.0246,24.999],[1.5982,48.1,0.9619,0.0248,25.0506],[1.6315,49.0,0.9623,0.0246,25.0835],[1.6647,50.0,0.9639,0.0239,25.1099],[1.698,51.0,0.9642,0.0222,25.1418],[1.7313,52.0,0.9666,0.0215,25.2007],[1.7646,53.1,0.9631,0.024,25.0828],[1.7979,54.1,0.9634,0.0231,25.1075],[1.8312,55.1,0.9625,0.0241,25.0741],[1.8645,56.1,0.9609,0.025,25.0116],[1.8978,57.2,0.9608,0.0267,25.0201],[1.9311,58.2,0.9579,0.0297,24.8932],[1.9644,59.2,0.9618,0.0256,25.0274],[1.9977,60.3,0.9584,0.0293,24.8935],[2.031,61.3,0.9604,0.0274,24.9568],[2.0643,62.3,0.9616,0.0262,25.0106],[2.0975,63.2,0.9627,0.0248,25.0384],[2.1308,64.2,0.9645,0.0222,25.1283],[2.1641,65.2,0.9641,0.0223,25.1148],[2.1974,66.2,0.9658,0.0216,25.141],[2.2307,67.2,0.9636,0.0231,25.0883],[2.264,68.2,0.9639,0.0232,25.0961],[2.2973,69.2,0.9602,0.0266,24.9927],[2.3306,70.2,0.9618,0.0256,25.0017],[2.3639,71.2,0.9629,0.0246,25.0359],[2.3972,72.2,0.963,0.0254,25.0382],[2.4305,73.3,0.9627,0.0249,25.0348],[2.4638,74.3,0.96,0.028,24.9322],[2.4971,75.3,0.9607,0.0276,24.9494],[2.5303,76.3,0.962,0.0267,25.0001],[2.5636,77.3,0.9641,0.0249,25.0918],[2.5969,78.3,0.9627,0.0252,25.0382],[2.6302,79.4,0.9626,0.0247,25.0352],[2.6635,80.4,0.9629,0.0252,25.0608],[2.6968,81.4,0.961,0.0263,24.9993],[2.7301,82.5,0.9602,0.0267,24.9567],[2.7634,83.5,0.9603,0.0265,24.9336],[2.7967,84.5,0.9633,0.025,25.0163],[2.83,85.5,0.964,0.0241,25.056],[2.8633,86.5,0.9607,0.0272,24.9483],[2.8966,87.5,0.9618,0.0257,24.9841],[2.9299,88.5,0.961,0.0275,24.9567],[2.9631,89.5,0.9606,0.028,24.9413],[2.9964,90.5,0.9588,0.0291,24.8869],[3.0297,91.5,0.9611,0.0273,24.956],[3.063,92.5,0.9597,0.0274,24.9227],[3.0963,93.4,0.9625,0.0247,25.0156],[3.1296,94.4,0.9622,0.0254,25.0092],[3.1629,95.4,0.9624,0.0263,25.0165],[3.1962,96.4,0.9647,0.0236,25.0997],[3.2295,97.3,0.9629,0.0251,25.0298],[3.2628,98.3,0.9624,0.0263,25.0299],[3.2961,99.3,0.9617,0.0268,24.9839],[3.3294,100.3,0.9557,0.031,24.7937],[3.3627,101.2,0.9615,0.027,24.9791],[3.3959,102.2,0.9592,0.0292,24.9033],[3.4292,103.2,0.9591,0.0282,24.9071],[3.4625,104.1,0.9596,0.0283,24.9105],[3.4958,105.1,0.9601,0.0285,24.91],[3.5291,106.0,0.9599,0.0284,24.9088],[3.5624,107.0,0.9589,0.0303,24.8617],[3.5957,108.0,0.9596,0.029,24.904],[3.629,108.9,0.9591,0.0291,24.8929],[3.6623,109.9,0.9588,0.0298,24.8821],[3.6956,110.9,0.9618,0.026,24.9995],[3.7289,111.8,0.9616,0.0262,24.9854],[3.7622,112.8,0.9618,0.026,24.9758],[3.7955,113.8,0.9631,0.0248,25.0213],[3.8287,114.8,0.9626,0.0247,25.0044],[3.862,115.8,0.9592,0.0293,24.8815],[3.8953,116.8,0.9594,0.0289,24.9095],[3.9286,117.8,0.9626,0.0258,25.0101],[3.9619,118.8,0.9615,0.0265,24.9575],[3.9952,119.7,0.96,0.0284,24.893]]},"v1":{"pts":[[0.0001,0.0,0.0261,0.9583,-9.9468,0.8134],[0.0178,1.0,0.0611,0.9324,-8.147,0.7154],[0.0355,1.9,0.1072,0.8813,-6.8467,0.622],[0.0532,2.9,0.1183,0.8693,-6.2154,0.6034],[0.0709,3.9,0.1468,0.8383,-5.5108,0.5595],[0.0886,4.9,0.1726,0.8097,-4.9375,0.5109],[0.1063,5.9,0.1782,0.8067,-4.7575,0.508],[0.124,6.9,0.1675,0.8172,-4.6484,0.513],[0.1417,8.1,0.1881,0.7932,-4.1457,0.481],[0.1594,9.2,0.202,0.7812,-3.8134,0.47],[0.1771,10.3,0.2324,0.7464,-3.0116,0.4317],[0.1948,11.4,0.2434,0.7356,-2.6022,0.415],[0.2125,12.5,0.2475,0.7294,-2.4746,0.409],[0.2302,13.7,0.2433,0.7297,-2.4891,0.4047],[0.2479,14.8,0.2563,0.7139,-2.2663,0.3849],[0.2656,15.9,0.2773,0.6888,-1.8449,0.3661],[0.2832,17.0,0.3006,0.6711,-1.1274,0.3467],[0.3009,18.1,0.2924,0.6836,-1.2309,0.3578],[0.3186,19.2,0.3007,0.6641,-1.1535,0.3413],[0.3363,20.2,0.3167,0.6542,-0.5024,0.3299],[0.354,21.2,0.3083,0.6628,-0.672,0.3315],[0.3717,22.3,0.3072,0.665,-0.6537,0.3324],[0.3894,23.3,0.2912,0.6847,-1.1273,0.3487],[0.4071,24.4,0.3021,0.6776,-1.0497,0.3498],[0.4248,25.4,0.3189,0.657,-0.3966,0.3328],[0.4425,26.4,0.3299,0.6425,-0.0861,0.3226],[0.4602,27.4,0.3257,0.6482,-0.1682,0.3208],[0.4779,28.4,0.3258,0.6496,-0.2543,0.3279],[0.4956,29.4,0.3253,0.6481,-0.1748,0.3201],[0.5133,30.4,0.3084,0.6683,-0.6529,0.3343],[0.531,31.3,0.297,0.6841,-1.0283,0.3469],[0.5487,32.3,0.3156,0.6611,-0.6064,0.3289],[0.5664,33.3,0.3065,0.6728,-0.7864,0.3374],[0.5841,34.4,0.3125,0.6679,-0.5403,0.3362],[0.6018,35.4,0.3302,0.6512,0.0423,0.3242],[0.6194,36.4,0.3406,0.638,0.3853,0.3142],[0.6371,37.4,0.3419,0.6362,0.3999,0.3123],[0.6548,38.5,0.349,0.6285,0.53,0.3072],[0.6725,39.5,0.3511,0.6208,0.5093,0.2983],[0.6902,40.5,0.3545,0.6202,0.6683,0.2981],[0.7079,41.4,0.3581,0.6145,0.8866,0.2941],[0.7256,42.4,0.353,0.6204,0.7086,0.2982],[0.7433,43.4,0.3513,0.6265,0.575,0.3062],[0.761,44.4,0.3545,0.618,0.6222,0.2948],[0.7787,45.3,0.3477,0.6237,0.4522,0.2992],[0.7964,46.3,0.3531,0.6141,0.5143,0.2936],[0.8141,47.3,0.3463,0.6121,0.2822,0.291],[0.8318,48.2,0.3393,0.6182,-0.0975,0.2977],[0.8495,49.2,0.3363,0.6217,-0.3678,0.3029],[0.8672,50.2,0.3426,0.617,-0.1508,0.2936],[0.8849,51.2,0.3506,0.6155,0.2376,0.2923],[0.9026,52.2,0.3565,0.611,0.5184,0.2926],[0.9203,53.1,0.3596,0.6009,0.494,0.281],[0.938,54.1,0.3587,0.6021,0.3215,0.2847],[0.9556,55.1,0.3689,0.5939,0.7804,0.2813],[0.9733,56.1,0.3729,0.5951,1.0085,0.2776],[0.991,57.0,0.3768,0.5873,1.2984,0.2698],[1.0087,58.0,0.3601,0.609,0.7895,0.285],[1.0264,59.0,0.364,0.6065,0.902,0.2847],[1.0441,59.9,0.3651,0.6067,0.8751,0.2893],[1.0618,60.9,0.3597,0.6113,0.7226,0.2941],[1.0795,61.9,0.3563,0.6151,0.6973,0.2912],[1.0972,62.8,0.3704,0.5945,1.0091,0.2768],[1.1149,63.8,0.3711,0.5948,0.9884,0.2799],[1.1326,64.8,0.3713,0.5937,0.9444,0.2742],[1.1503,65.8,0.3735,0.5882,1.0428,0.275],[1.168,66.7,0.3745,0.5887,1.1245,0.2744],[1.1857,67.7,0.3671,0.597,0.9069,0.278],[1.2034,68.7,0.3713,0.5895,1.0323,0.2743],[1.2211,69.7,0.3727,0.5913,1.0378,0.2786],[1.2388,70.6,0.3708,0.5919,1.019,0.277],[1.2565,71.6,0.3617,0.6063,0.7323,0.2879],[1.2742,72.6,0.3571,0.61,0.5934,0.2895],[1.2918,73.5,0.3801,0.5857,1.2672,0.2745],[1.3095,74.5,0.3836,0.5816,1.3788,0.2678],[1.3272,75.5,0.3839,0.5829,1.3347,0.2699],[1.3449,76.5,0.3872,0.5803,1.4186,0.2698],[1.3626,77.4,0.3852,0.5834,1.5394,0.2708],[1.3803,78.4,0.3754,0.5956,1.3078,0.2767],[1.398,79.4,0.3796,0.5906,1.3171,0.2764],[1.4157,80.3,0.3729,0.5954,1.0968,0.2803],[1.4334,81.3,0.3691,0.6004,0.9957,0.284],[1.4511,82.3,0.3762,0.5931,1.3518,0.2757],[1.4688,83.3,0.3866,0.5864,1.6906,0.2723],[1.4865,84.2,0.3825,0.5837,1.4414,0.2708],[1.5042,85.2,0.3853,0.5768,1.5364,0.2655],[1.5219,86.2,0.3882,0.5739,1.6136,0.2636],[1.5396,87.2,0.3794,0.5803,1.3357,0.2682],[1.5573,88.1,0.3658,0.5917,1.0346,0.2762],[1.575,89.1,0.3687,0.5905,1.0184,0.2754],[1.5927,90.1,0.3671,0.5897,0.8592,0.2728],[1.6104,91.0,0.3617,0.5961,0.6894,0.2752],[1.628,92.0,0.3596,0.5983,0.7188,0.2767],[1.6457,93.0,0.3668,0.5955,0.9967,0.2749],[1.6634,94.0,0.3695,0.5943,1.0426,0.2756],[1.6811,95.0,0.3603,0.6012,0.7154,0.2776],[1.6988,96.0,0.365,0.5971,0.8467,0.2767],[1.7165,96.9,0.3549,0.6083,0.5577,0.2829],[1.7342,97.9,0.3555,0.6081,0.6579,0.2828],[1.7519,98.9,0.3497,0.6149,0.506,0.2829],[1.7696,99.8,0.3641,0.5965,0.8294,0.2742],[1.7873,100.8,0.3664,0.5916,0.8886,0.2712],[1.805,101.8,0.3631,0.5929,0.8212,0.2685],[1.8227,102.8,0.3661,0.5924,0.8689,0.2685],[1.8404,103.7,0.3732,0.5858,1.0388,0.2673],[1.8581,104.7,0.3703,0.5863,0.924,0.2662],[1.8758,105.7,0.3596,0.6006,0.6449,0.2755],[1.8935,106.7,0.3499,0.6125,0.2657,0.2815],[1.9112,107.6,0.3525,0.6067,0.2974,0.2799],[1.9289,108.6,0.3577,0.6015,0.3725,0.2763],[1.9466,109.6,0.3499,0.6124,0.2361,0.2814],[1.9642,110.6,0.3528,0.6118,0.3757,0.2833],[1.9819,111.5,0.3356,0.6306,-0.0143,0.2917],[1.9996,112.5,0.3339,0.6316,0.0069,0.2917],[2.0173,113.5,0.3425,0.6275,0.2998,0.2929],[2.035,114.4,0.3399,0.6309,0.105,0.2943],[2.0527,115.4,0.3491,0.6182,0.5478,0.2878],[2.0704,116.4,0.3486,0.6189,0.4864,0.2862],[2.0881,117.3,0.3507,0.6187,0.4996,0.2867],[2.1058,118.3,0.3468,0.6236,0.3878,0.2894],[2.1235,119.3,0.3563,0.6123,0.7261,0.2827]]},"v2":{"pts":[[0.0001,0.0,0.0164,0.959,-10.6512,0.8156],[0.0181,1.0,0.0391,0.954,-8.6072,0.791],[0.036,2.0,0.0519,0.9393,-7.7701,0.7481],[0.054,2.9,0.0664,0.9229,-7.168,0.6805],[0.072,3.9,0.098,0.8892,-6.3828,0.6087],[0.0899,5.0,0.1316,0.8537,-5.3576,0.5451],[0.1079,6.0,0.1311,0.8566,-5.0796,0.5427],[0.1258,7.0,0.1523,0.8361,-4.5209,0.5199],[0.1438,8.0,0.1687,0.8213,-4.098,0.503],[0.1617,9.0,0.1894,0.7991,-3.7964,0.4799],[0.1797,9.9,0.1867,0.8016,-3.7781,0.4813],[0.1977,10.9,0.1959,0.7921,-3.5152,0.4757],[0.2156,11.9,0.202,0.7861,-3.4744,0.4724],[0.2336,12.9,0.2131,0.7729,-3.276,0.4567],[0.2515,13.9,0.2083,0.7754,-3.5604,0.4581],[0.2695,14.9,0.2142,0.7722,-3.2421,0.4539],[0.2874,15.9,0.1968,0.7921,-3.353,0.4716],[0.3054,16.9,0.1968,0.7935,-3.3905,0.4747],[0.3234,17.8,0.1982,0.7913,-3.4042,0.4687],[0.3413,18.8,0.1897,0.7988,-3.7308,0.4797],[0.3593,19.9,0.173,0.812,-4.1997,0.497],[0.3772,20.9,0.1805,0.8059,-4.0498,0.4928],[0.3952,21.8,0.196,0.7923,-3.4364,0.4727],[0.4131,22.8,0.2175,0.7707,-2.9032,0.4527],[0.4311,23.9,0.2248,0.7619,-2.8421,0.4499],[0.4491,24.9,0.2293,0.7544,-2.5007,0.4395],[0.467,25.9,0.2413,0.7438,-2.0899,0.4273],[0.485,26.9,0.2337,0.7516,-2.164,0.4293],[0.5029,27.9,0.2348,0.7497,-2.0616,0.4256],[0.5209,28.9,0.2263,0.759,-2.3429,0.4322],[0.5388,29.9,0.2475,0.7378,-1.8064,0.4175],[0.5568,30.9,0.2375,0.7466,-1.9644,0.4254],[0.5748,31.9,0.2564,0.7284,-1.5175,0.4018],[0.5927,32.9,0.2725,0.7125,-1.2406,0.388],[0.6107,33.9,0.2669,0.7187,-1.2949,0.3949],[0.6286,34.9,0.2725,0.7111,-1.197,0.3866],[0.6466,35.9,0.2749,0.708,-1.2443,0.3881],[0.6645,36.9,0.2849,0.6973,-1.0103,0.3821],[0.6825,37.9,0.2762,0.7061,-0.9747,0.3834],[0.7004,38.9,0.261,0.7233,-1.2326,0.3961],[0.7184,39.9,0.262,0.7236,-1.1099,0.3973],[0.7364,40.8,0.273,0.7123,-0.8011,0.3883],[0.7543,41.8,0.2688,0.7165,-0.8975,0.3897],[0.7723,42.8,0.2757,0.7101,-0.6673,0.3863],[0.7902,43.8,0.2816,0.705,-0.5414,0.3819],[0.8082,44.8,0.299,0.6865,-0.0776,0.3695],[0.8261,45.8,0.2983,0.6875,-0.0626,0.3674],[0.8441,46.8,0.2947,0.6925,-0.1381,0.3712],[0.8621,47.8,0.3092,0.6776,0.2665,0.3619],[0.88,48.8,0.3179,0.6687,0.5512,0.3571],[0.898,49.8,0.3127,0.6747,0.4213,0.359],[0.9159,50.7,0.3247,0.6622,0.7782,0.35],[0.9339,51.7,0.3227,0.6639,0.7819,0.3487],[0.9518,52.7,0.337,0.6476,1.2009,0.3383],[0.9698,53.7,0.3519,0.6322,1.5906,0.3247],[0.9878,54.7,0.3473,0.6386,1.3794,0.3301],[1.0057,55.7,0.3553,0.6291,1.5084,0.3233],[1.0237,56.7,0.3582,0.6273,1.6414,0.3236],[1.0416,57.7,0.3631,0.6209,1.7753,0.3238],[1.0596,58.6,0.3702,0.6119,1.9155,0.3158],[1.0775,59.6,0.3583,0.624,1.5107,0.3247],[1.0955,60.6,0.3677,0.6141,1.9143,0.3161],[1.1135,61.6,0.3626,0.6191,1.9112,0.3207],[1.1314,62.6,0.3868,0.5944,2.5615,0.303],[1.1494,63.6,0.3846,0.5977,2.4623,0.3045],[1.1673,64.6,0.3865,0.5917,2.485,0.2998],[1.1853,65.6,0.4066,0.5693,3.168,0.2842],[1.2032,66.6,0.4153,0.5612,3.4864,0.2785],[1.2212,67.6,0.4083,0.5699,3.2825,0.2823],[1.2392,68.6,0.4072,0.5731,3.1852,0.2868],[1.2571,69.6,0.4066,0.5722,3.1229,0.286],[1.2751,70.6,0.419,0.5609,3.4491,0.2779],[1.293,71.5,0.4311,0.5456,3.7897,0.2688],[1.311,72.5,0.4232,0.5555,3.5729,0.2741],[1.3289,73.5,0.4322,0.5438,3.8416,0.2653],[1.3469,74.5,0.4437,0.5321,4.1522,0.2564],[1.3649,75.5,0.4313,0.5464,3.7212,0.2653],[1.3828,76.5,0.4194,0.5587,3.3665,0.2752],[1.4008,77.4,0.4231,0.5527,3.4311,0.2724],[1.4187,78.4,0.4197,0.5569,3.3396,0.2762],[1.4367,79.4,0.4162,0.5647,3.19,0.2827],[1.4546,80.4,0.4149,0.5662,3.1252,0.2836],[1.4726,81.4,0.4041,0.5765,2.817,0.2912],[1.4906,82.4,0.4017,0.5787,2.8089,0.2901],[1.5085,83.5,0.3943,0.5864,2.5316,0.299],[1.5265,84.4,0.3849,0.5968,2.2004,0.3066],[1.5444,85.4,0.3846,0.5968,2.2472,0.3094],[1.5624,86.4,0.3776,0.6065,2.1751,0.3148],[1.5803,87.4,0.3867,0.5972,2.3829,0.3072],[1.5983,88.4,0.3867,0.5967,2.3143,0.3065],[1.6162,89.4,0.3976,0.5851,2.7077,0.2972],[1.6342,90.4,0.3924,0.5901,2.5739,0.3029],[1.6522,91.4,0.3981,0.585,2.7674,0.2986],[1.6701,92.3,0.3997,0.5826,2.8508,0.2922],[1.6881,93.3,0.4053,0.5762,3.0339,0.2873],[1.706,94.3,0.4064,0.5751,3.0571,0.2854],[1.724,95.3,0.4097,0.5725,3.1607,0.284],[1.7419,96.3,0.41,0.5713,3.208,0.2839],[1.7599,97.3,0.4078,0.5754,3.2086,0.2895],[1.7779,98.3,0.3835,0.6005,2.463,0.3077],[1.7958,99.3,0.3744,0.6095,2.2852,0.315],[1.8138,100.3,0.3798,0.6015,2.5017,0.3092],[1.8317,101.3,0.3853,0.5953,2.6169,0.3039],[1.8497,102.3,0.3885,0.5928,2.6239,0.3011],[1.8676,103.3,0.3795,0.6021,2.3448,0.3114],[1.8856,104.3,0.3856,0.5952,2.6166,0.3047],[1.9036,105.3,0.3917,0.5898,2.8629,0.2982],[1.9215,106.3,0.3917,0.5899,2.897,0.2966],[1.9395,107.3,0.4005,0.5809,3.1942,0.2924],[1.9574,108.3,0.4039,0.578,3.2551,0.2895],[1.9754,109.3,0.4002,0.5803,3.138,0.2921],[1.9933,110.2,0.4131,0.5685,3.5357,0.2849],[2.0113,111.2,0.4227,0.5565,3.7867,0.2755],[2.0293,112.2,0.4231,0.5559,3.8185,0.2769],[2.0472,113.2,0.4193,0.5633,3.6161,0.2822],[2.0652,114.2,0.4229,0.5583,3.6777,0.2808],[2.0831,115.2,0.4218,0.5593,3.7102,0.2801],[2.1011,116.2,0.4193,0.5639,3.5742,0.2828],[2.119,117.2,0.4166,0.5659,3.4742,0.2827],[2.137,118.2,0.4125,0.5701,3.3053,0.2864],[2.155,119.2,0.4046,0.5771,3.0538,0.2914]]},"v3":{"pts":[[0.0001,0.0,0.0157,0.9591,-10.9971,0.8025],[0.0172,1.0,0.0573,0.9329,-8.4493,0.7124],[0.0342,2.0,0.0812,0.9065,-7.1938,0.6402],[0.0512,2.9,0.1109,0.8777,-6.1945,0.5788],[0.0683,3.9,0.1266,0.8623,-5.7129,0.5493],[0.0853,4.9,0.1409,0.8472,-5.1389,0.527],[0.1024,5.9,0.1476,0.8412,-4.8429,0.5163],[0.1194,6.8,0.1521,0.8368,-4.6638,0.5028],[0.1364,7.8,0.1679,0.8209,-4.2119,0.4834],[0.1535,8.8,0.1666,0.8221,-4.2187,0.4863],[0.1705,9.8,0.1885,0.7998,-3.6961,0.4652],[0.1876,10.8,0.2113,0.7742,-3.2461,0.4369],[0.2046,11.8,0.2111,0.7742,-3.1177,0.4356],[0.2216,12.7,0.2151,0.7683,-2.8956,0.4281],[0.2387,13.7,0.2186,0.7661,-2.7897,0.4257],[0.2557,14.7,0.1974,0.7864,-3.2759,0.4501],[0.2728,15.7,0.1745,0.8104,-3.7236,0.4774],[0.2898,16.7,0.1592,0.8266,-4.0566,0.4909],[0.3068,17.6,0.1702,0.8179,-3.8149,0.4823],[0.3239,18.6,0.1762,0.812,-3.5959,0.4734],[0.3409,19.6,0.1745,0.812,-3.6276,0.4735],[0.358,20.6,0.1715,0.8169,-3.624,0.4792],[0.375,21.6,0.1719,0.8173,-3.5804,0.4756],[0.392,22.6,0.1875,0.8006,-3.1322,0.462],[0.4091,23.6,0.215,0.7718,-2.5237,0.4315],[0.4261,24.5,0.2236,0.762,-2.4262,0.4202],[0.4432,25.5,0.2286,0.7568,-2.2014,0.412],[0.4602,26.5,0.2183,0.767,-2.5299,0.4194],[0.4772,27.4,0.2094,0.7778,-2.7317,0.4326],[0.4943,28.4,0.2175,0.7668,-2.6251,0.4211],[0.5113,29.4,0.2247,0.7578,-2.5959,0.417],[0.5284,30.4,0.2277,0.7536,-2.7145,0.4104],[0.5454,31.3,0.2392,0.7412,-2.5083,0.3998],[0.5624,32.3,0.2538,0.7221,-2.2464,0.3792],[0.5795,33.3,0.2507,0.728,-2.3014,0.3847],[0.5965,34.3,0.2481,0.733,-2.3098,0.3864],[0.6135,35.3,0.2567,0.7232,-2.1442,0.3788],[0.6306,36.3,0.2669,0.7123,-1.8986,0.3705],[0.6476,37.2,0.2716,0.7102,-1.659,0.3703],[0.6647,38.2,0.2655,0.7177,-1.817,0.3744],[0.6817,39.2,0.271,0.7109,-1.6683,0.3687],[0.6987,40.2,0.2697,0.7088,-1.8369,0.3632],[0.7158,41.2,0.2728,0.7047,-1.8212,0.3601],[0.7328,42.2,0.2794,0.6974,-1.7567,0.353],[0.7499,43.2,0.2811,0.6976,-1.8081,0.357],[0.7669,44.2,0.2816,0.6956,-1.871,0.355],[0.7839,45.2,0.2861,0.6917,-1.7534,0.3533],[0.801,46.1,0.2836,0.6943,-1.7931,0.3556],[0.818,47.1,0.2783,0.6996,-2.022,0.3591],[0.8351,48.1,0.2789,0.7014,-1.9916,0.3657],[0.8521,49.1,0.2815,0.6998,-1.9617,0.3617],[0.8691,50.1,0.2834,0.6966,-1.9311,0.3586],[0.8862,51.1,0.2717,0.7108,-2.2185,0.3687],[0.9032,52.1,0.2583,0.7243,-2.5857,0.3846],[0.9203,53.1,0.2596,0.7234,-2.6448,0.3853],[0.9373,54.1,0.2645,0.7174,-2.4699,0.3832],[0.9543,55.1,0.2518,0.7316,-2.8192,0.3943],[0.9714,56.1,0.2644,0.7152,-2.5176,0.3807],[0.9884,57.1,0.2638,0.7162,-2.6817,0.3814],[1.0055,58.0,0.2766,0.7014,-2.4529,0.3655],[1.0225,59.0,0.2871,0.69,-2.2148,0.3596],[1.0395,60.0,0.2959,0.6797,-2.1272,0.3503],[1.0566,61.0,0.2968,0.6774,-2.1467,0.3459],[1.0736,62.0,0.2988,0.6789,-2.0359,0.3477],[1.0907,63.0,0.296,0.6802,-2.1201,0.3465],[1.1077,63.9,0.2974,0.6795,-1.9655,0.3461],[1.1247,64.9,0.2985,0.676,-2.0163,0.3426],[1.1418,65.9,0.3047,0.6698,-1.8163,0.3366],[1.1588,66.9,0.2984,0.676,-2.0186,0.3435],[1.1758,67.8,0.2982,0.6723,-1.9759,0.339],[1.1929,68.8,0.3079,0.6599,-1.7708,0.3275],[1.2099,69.8,0.3135,0.6569,-1.6031,0.3242],[1.227,70.9,0.3138,0.6515,-1.7167,0.3194],[1.244,71.8,0.3164,0.6488,-1.69,0.317],[1.261,72.8,0.3155,0.6498,-1.8026,0.3149],[1.2781,73.8,0.3211,0.6442,-1.5201,0.3119],[1.2951,74.8,0.3213,0.6461,-1.4606,0.3147],[1.3122,75.8,0.3207,0.6454,-1.5019,0.3145],[1.3292,76.8,0.3167,0.644,-1.699,0.3117],[1.3462,77.8,0.3156,0.6485,-1.7297,0.318],[1.3633,78.8,0.318,0.6511,-1.5623,0.3208],[1.3803,79.8,0.3183,0.6562,-1.4495,0.3264],[1.3974,80.8,0.3095,0.6664,-1.7072,0.3338],[1.4144,81.9,0.3036,0.6735,-1.8394,0.3386],[1.4314,83.0,0.3059,0.6696,-1.7532,0.3379],[1.4485,84.1,0.3098,0.668,-1.5912,0.3372],[1.4655,85.1,0.3149,0.666,-1.4435,0.3359],[1.4826,86.1,0.307,0.6762,-1.7352,0.343],[1.4996,87.1,0.3071,0.6719,-1.8043,0.3394],[1.5166,88.1,0.3118,0.6681,-1.6712,0.3357],[1.5337,89.1,0.3145,0.6655,-1.6367,0.3333],[1.5507,90.1,0.3125,0.6688,-1.6573,0.3363],[1.5678,91.1,0.3106,0.6693,-1.6874,0.3371],[1.5848,92.1,0.3157,0.6617,-1.5856,0.3321],[1.6018,93.1,0.3204,0.6583,-1.4847,0.3265],[1.6189,94.1,0.3286,0.6479,-1.2734,0.3184],[1.6359,95.2,0.3272,0.6473,-1.2362,0.3178],[1.6529,96.2,0.3317,0.6454,-1.0609,0.3173],[1.67,97.2,0.3302,0.6443,-1.1711,0.3163],[1.687,98.1,0.33,0.6446,-1.2397,0.3172],[1.7041,99.2,0.3293,0.6458,-1.2695,0.317],[1.7211,100.2,0.3293,0.6427,-1.3147,0.3108],[1.7381,101.1,0.3217,0.6543,-1.4083,0.3235],[1.7552,102.2,0.3154,0.6653,-1.4919,0.3328],[1.7722,103.2,0.3189,0.6629,-1.3694,0.3292],[1.7893,104.2,0.3078,0.6753,-1.708,0.3398],[1.8063,105.2,0.3004,0.684,-1.8135,0.3494],[1.8233,106.2,0.3003,0.6842,-1.8257,0.3517],[1.8404,107.2,0.3184,0.6652,-1.3519,0.3385],[1.8574,108.3,0.3201,0.6628,-1.3563,0.3344],[1.8745,109.3,0.3253,0.6558,-1.2318,0.3288],[1.8915,110.3,0.3288,0.6531,-1.0733,0.3282],[1.9085,111.3,0.326,0.6561,-1.1337,0.3307],[1.9256,112.3,0.324,0.6587,-1.1657,0.3328],[1.9426,113.3,0.3299,0.6533,-1.031,0.3298],[1.9597,114.3,0.3294,0.6533,-1.088,0.3269],[1.9767,115.3,0.3308,0.6498,-1.0137,0.3274],[1.9937,116.3,0.3284,0.6525,-1.0947,0.3284],[2.0108,117.2,0.3397,0.641,-0.6987,0.3215],[2.0278,118.2,0.3323,0.6479,-0.8263,0.3268],[2.0449,119.2,0.334,0.6467,-0.7601,0.3258]]}};
+</script>
+<script>
+(() => {
+'use strict';
+const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+// ---------- theme tokens (canvases read these at draw time) ----------
+let TK = {};
+function readTK() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ink', 'panel', 'panel-2', 'line', 'paper', 'muted', 'hazard', 'hazard-ink', 'sensor', 'alarm', 'violet']) TK[k] = cs.getPropertyValue('--' + k).trim();
+  TK.mono = '"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace';
+  TK.display = '"Archivo", "Arial Narrow", Arial, sans-serif';
+}
+readTK();
+const redrawers = [];
+function onTheme() { readTK(); redrawers.forEach(f => f()); }
+$('#themeBtn').addEventListener('click', () => {
+  const root = document.documentElement;
+  const cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  store.set('rlfg-theme', root.getAttribute('data-theme'));
+  onTheme();
+});
+{ const t = store.get('rlfg-theme'); if (t === 'light' || t === 'dark') { document.documentElement.setAttribute('data-theme', t); readTK(); } }
+if (window.matchMedia) matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', onTheme);
+function alpha(c, a) { // hex -> rgba
+  if (!c || c[0] !== '#') return c;
+  let h = c.slice(1); if (h.length === 3) h = h.split('').map(x => x + x).join('');
+  const n = parseInt(h, 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
+}
+function setup(cv) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = cv.clientWidth || cv.width, h = cv.clientHeight || cv.height;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+// ---------- audience lens ----------
+const LENS_NAMES = { exec: 'For executives', new: 'New to this', agents: 'For agent builders', llm: 'For LLM trainers' };
+const LENS = {
+  stack: {
+    exec: 'Nobody trains one giant robot brain. Teams stack proven parts: a mission layer that decides what to do, a learned skill that decides how to move, and a pretrained motor layer underneath. Each layer can be bought, built, swapped and tested on its own.',
+    new: 'Think of a delivery driver. The dispatcher picks the address, the driver picks the lane, and their feet just walk. Our robot works the same way. We trained only the middle layer, the one that steers around people. The walking came pretrained from NVIDIA.',
+    agents: 'This is your agent stack with a body. The mission layer is the planner, the steering skill is a tool it calls ten times a second, and the legs are a tool the skill calls. The failure modes match too, such as a tool that reports success while doing the wrong thing.',
+    llm: 'The steering policy is a two-layer, 256-unit MLP, tiny next to an LLM. The heavy pretrained piece is the locomotion policy below it, the way a base model sits under a fine-tune. We froze the legs and trained only the head that turns sensor readings into velocity commands.'
+  },
+  plaza: {
+    exec: { main: 'This is the whole method in miniature. Software watches thousands of attempts, keeps what worked and drops what didn\'t. Nobody writes rules for dodging people. Each checkbox is a design decision a real team argues about.', items: [
+      ['Memory', 'give the machine a few seconds of recent history. In our real project this helped a little against people walking into the robot.'],
+      ['Personal space', 'pay it to keep a polite distance, not just to avoid collisions. In the real project, this plus a denser crowd moved nothing.'],
+      ['Trajectory', 'hand it a ready-made “who is coming at me, how fast” signal instead of hoping it learns one.'],
+      ['Derivative', 'also flag who is changing course, the early sign of someone stepping into its path.']] },
+    new: { main: 'The robot sees the world as 16 distance readings (the cyan fan) plus where its goal is. At first it drives almost at random. Each round, the learner tries small variations of the robot\'s brain and keeps the ones that got further with fewer bumps.', items: [
+      ['Memory', 'it also sees what the fan looked like a moment ago, so it can tell a person walking from a person standing.'],
+      ['Personal space', 'it loses a few points whenever anyone is within 1 m, even without touching.'],
+      ['Trajectory', 'for each direction, it is told whether the nearest thing is getting closer, and how fast.'],
+      ['Derivative', 'it is also told whether that approach is speeding up or turning, which is how the red pedestrians behave.']] },
+    agents: { main: 'The environment is your eval harness, running the agent end to end thousands of times. One difference from agent evals: here the score is the training signal itself, so whatever the harness can\'t see, the policy will exploit.', items: [
+      ['Memory', 'a longer context window: the last 0.6 s of observations instead of one snapshot.'],
+      ['Personal space', 'a rubric change, not a capability change. Watch whether behavior actually moves.'],
+      ['Trajectory', 'a precomputed tool output: hand the agent a derived signal instead of raw logs.'],
+      ['Derivative', 'a second derived signal. More inputs also mean a bigger search for the learner, so check it pays for itself.']] },
+    llm: { main: 'This toy uses evolution strategies (perturb the weights, score them, step toward the better ones) because it fits in a browser tab. The real run used PPO with 4,096 parallel worlds. It\'s the same loop as RL fine-tuning: rollouts, a scalar return, an update. The rollouts just come from physics.', items: [
+      ['Memory', 'longer context. The real v2 added scans 0.3 and 0.6 s back. Adversarial hit rate went 37.2% → 35.2% held out, but bumping ordinary people stayed at 55 of 80 runs.'],
+      ['Personal space', 'reward shaping. The real v3 added it with a denser crowd, and nothing moved (56 of 80, hit rate 40.0%).'],
+      ['Trajectory', 'feature engineering: first differences of the scan. The real run gave raw lagged scans and left differencing to the network.'],
+      ['Derivative', 'second differences. Hand-built features versus letting the network learn them; the ablation log is where you settle it.']] }
+  },
+  reward: {
+    exec: 'The reward is the policy you write down. Set it carelessly and the machine optimizes exactly what you said, not what you meant. A surprising share of bad behavior in learned systems traces back to a scoring rule like these sliders.',
+    new: 'Every tenth of a second the robot earns points for getting closer to its goal and loses points for wasting time, cutting close, or touching someone. Move a slider and see which route the robot would end up preferring.',
+    agents: 'This is the same problem as an agent\'s eval rubric. If finishing fast counts more than finishing safely, you get an agent that cuts corners. Here the corner is a person\'s elbow.',
+    llm: 'Reward hacking you can see. The per-step time penalty behaves like a length penalty, contact is a hard constraint written as a big negative, and personal space is a shaping term, the robot version of a style reward. It\'s just as easy to over-weight.'
+  },
+  ppo: {
+    exec: 'PPO is the workhorse algorithm behind both robot training and the chat assistants you use. Its one idea is caution: improve, but never by too much from a single batch of experience.',
+    new: 'After each round of practice, PPO nudges the robot\'s habits toward whatever went better than expected. The clip is a speed limit on how far one round of practice can change it.',
+    agents: 'Think of it as a guarded rollout: change the policy only where the evidence says so, and cap each change. That caution is why it can run unattended for two hours.',
+    llm: 'This is the same objective you used in RLHF: per-action ratio π_new/π_old, advantages from GAE (λ 0.95), clip 0.2, early stop at KL 0.03. The difference is that advantages come from physics returns, not a reward model. There is no reward model to hack, only the simulator.'
+  },
+  curves: {
+    exec: 'Two hours on one workstation produced about two billion practice steps per version. The easy world was solved at 96%. Adding pedestrians who walk into the robot cut training success to 30–41%. Hard problems stay hard, and an honest curve shows it.',
+    new: 'Each line is one training run. Success means reaching the goal without touching anyone during practice. The first world was easy. Later worlds added people who walk into the robot on purpose.',
+    agents: 'These are training metrics, not the scorecard. The scorecard (next section) used seeds the policy never saw, the same discipline as keeping your agent eval set out of the prompt-tuning loop.',
+    llm: 'Read it like a fine-tuning dashboard. Success plateaus, entropy collapses, and in every run the speed std pinned at its clamp (e¹ ≈ 2.72). With a tanh squash that turns speed into a go/stop switch: 92% of deployed commands were full speed, 1.6% in between. It\'s a suspect for v4, not a proven cause.'
+  },
+  denominator: {
+    exec: 'The headline number looked like a tie. The full table showed the learned policy bumped ordinary people in more than twice as many patrols. When anyone shows you one metric, ask for the denominator: per hour, per person nearby, per run.',
+    new: 'Count only the people trying to bump the robot and the trained robot looks as good as the hand-written one. Count everyone and it doesn\'t.',
+    agents: 'This is a single-metric eval on a multi-objective task. The agent version is reporting task success while hiding cost, latency, or the rate of harmful side actions.',
+    llm: 'Goodhart again. Training centred on adversarial pedestrians, and the ordinary crowd near the robot was about 7× thinner in training than in the benchmark. That distribution shift only shows up in the full table.'
+  },
+  'real-or-fake': {
+    exec: 'Our overnight run reported 7 successes. All 7 were bugs in the success check. Reviewing the video exposed them in minutes. Any result about an autonomous system should come with footage of the failures as well as the wins.',
+    new: 'A small program decides whether each attempt worked, and programs have bugs. Here, a bowl knocked onto an object counted as “object in bowl”.',
+    agents: 'Your LLM-as-judge or regex success check is this detector. Read a sample of transcripts, the way we watched videos, before you trust a pass rate.',
+    llm: 'A reward model can be wrong in exactly this way, and a policy will find the hole. Our check tested only horizontal distance and height, with no lift and no upright bowl. A fixed eval seed replayed the same bad placement for every checkpoint.'
+  },
+  industries: {
+    exec: 'Wherever machines work around people, someone will ask: how often does it fail, per hour of exposure, under which conditions, and can we replay what happened? Simulation is where those answers are produced before deployment.',
+    new: 'Pick an industry to see what a robot would do there and what you\'d want to test first.',
+    agents: 'Each tile is an agent with a body, a world it can damage, and a log you will be asked to explain. The eval harness is the product.',
+    llm: 'Each domain is a new environment, a new reward and a new distribution shift. The training recipe transfers. The scenarios and metrics are domain work.'
+  },
+  federate: {
+    exec: 'It isn\'t mature, and that\'s why now is the time. The tools are open, one workstation is enough to start, and the scarce skill is knowing how to test these systems. A small core team builds that skill once and lends it to every unit, instead of each unit buying black boxes.',
+    new: 'A small central team learns the hard parts (simulation, testing, training) and packages them so other teams can reuse them for their own robots and vendors.',
+    agents: 'It works like a platform team for agents: a shared harness, shared scorecards, shared incident replay. The units bring the domain scenarios.',
+    llm: 'Your fine-tuning and RL infrastructure already covers half of it: distributed rollouts, eval discipline, reward design. Add a simulator and someone who can write physical scenarios.'
+  }
+};
+let lens = store.get('rlfg-lens'); if (!LENS.stack[lens]) lens = 'exec';
+function applyLens(animate) {
+  $$('#lensSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lens === lens)));
+  $$('.note[data-lens-for]').forEach(n => {
+    const t = LENS[n.dataset.lensFor]; if (!t) return;
+    n.querySelector('.who').textContent = LENS_NAMES[lens];
+    const p = n.querySelector('p'), v = t[lens];
+    p.textContent = typeof v === 'string' ? v : v.main;
+    let ul = n.querySelector('ul.note-list');
+    if (typeof v !== 'string') {
+      if (!ul) { ul = document.createElement('ul'); ul.className = 'note-list'; n.appendChild(ul); }
+      ul.innerHTML = ''; v.items.forEach(([k, s]) => { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = k + ': '; li.append(b, s); ul.appendChild(li); });
+    } else if (ul) ul.remove();
+    if (animate) { p.classList.remove('swap'); void p.offsetWidth; p.classList.add('swap'); if (ul) { ul.classList.remove('swap'); void ul.offsetWidth; ul.classList.add('swap'); } }
+  });
+}
+$$('#lensSeg button').forEach(b => b.addEventListener('click', () => { lens = b.dataset.lens; store.set('rlfg-lens', lens); applyLens(true); }));
+applyLens(false);
+
+// ---------- world renderer ----------
+function drawWorld(ctx, w, h, ep, o = {}) {
+  const S = SIM, sc = o.cover ? Math.max(w / S.W, h / S.H) : Math.min(w / S.W, h / S.H);
+  const ox = (w - S.W * sc) / 2 + (o.shiftX || 0), oy = (h - S.H * sc) / 2;
+  const X = x => ox + x * sc, Y = y => oy + y * sc;
+  ctx.fillStyle = TK.ink; ctx.fillRect(0, 0, w, h);
+  // floor grid, 1 m
+  ctx.strokeStyle = alpha(TK.line, o.faint ? 0.5 : 0.9); ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = 0; x <= S.W; x += 1) { ctx.moveTo(X(x), Y(0)); ctx.lineTo(X(x), Y(S.H)); }
+  for (let y = 0; y <= S.H; y += 1) { ctx.moveTo(X(0), Y(y)); ctx.lineTo(X(S.W), Y(y)); }
+  ctx.stroke();
+  // walls with hazard ticks
+  ctx.strokeStyle = TK.muted; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(S.W), Y(0)); ctx.moveTo(X(0), Y(S.H)); ctx.lineTo(X(S.W), Y(S.H)); ctx.stroke();
+  ctx.strokeStyle = alpha(TK.hazard, 0.55); ctx.lineWidth = 3; ctx.beginPath();
+  for (let x = 0; x < S.W; x += 1) { ctx.moveTo(X(x), Y(0)); ctx.lineTo(X(x + 0.45), Y(0)); ctx.moveTo(X(x), Y(S.H)); ctx.lineTo(X(x + 0.45), Y(S.H)); }
+  ctx.stroke();
+  const { robot, goal, peds } = ep;
+  // route
+  ctx.setLineDash([6, 6]); ctx.strokeStyle = alpha(TK.hazard, 0.7); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(X(robot.x), Y(robot.y)); ctx.lineTo(X(goal.x), Y(goal.y)); ctx.stroke(); ctx.setLineDash([]);
+  // goal
+  ctx.strokeStyle = TK.hazard; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(goal.x), Y(goal.y), 0.8 * sc, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.arc(X(goal.x), Y(goal.y), 0.3 * sc, 0, 7); ctx.stroke();
+  // trail
+  if (ep.trail && ep.trail.length > 1) {
+    ctx.strokeStyle = alpha(TK.hazard, 0.35); ctx.lineWidth = 2; ctx.beginPath();
+    ep.trail.forEach((p, i) => i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1]))); ctx.stroke();
+  }
+  // lidar
+  if (o.lidar !== false) {
+    const sc16 = o.scan || S.scan(ep, new Float64Array(S.NSEC)), secW = S.FOV / S.NSEC;
+    ctx.fillStyle = alpha(TK.sensor, 0.08); ctx.beginPath(); ctx.moveTo(X(robot.x), Y(robot.y));
+    for (let k = 0; k < S.NSEC; k++) { const a = robot.th - S.FOV / 2 + (k + 0.5) * secW, r = sc16[k] * S.RANGE; ctx.lineTo(X(robot.x + Math.cos(a) * r), Y(robot.y + Math.sin(a) * r)); }
+    ctx.closePath(); ctx.fill();
+    ctx.lineWidth = 1;
+    for (let k = 0; k < S.NSEC; k++) {
+      const a = robot.th - S.FOV / 2 + (k + 0.5) * secW, r = sc16[k] * S.RANGE, hit = sc16[k] < 0.999;
+      ctx.strokeStyle = alpha(TK.sensor, hit ? 0.75 : 0.22);
+      ctx.beginPath(); ctx.moveTo(X(robot.x), Y(robot.y)); ctx.lineTo(X(robot.x + Math.cos(a) * r), Y(robot.y + Math.sin(a) * r)); ctx.stroke();
+      if (hit) { ctx.fillStyle = TK.sensor; ctx.beginPath(); ctx.arc(X(robot.x + Math.cos(a) * r), Y(robot.y + Math.sin(a) * r), 2.4, 0, 7); ctx.fill(); }
+    }
+  }
+  // predictions (display only; uses the simulator's true motion)
+  if (o.pred) {
+    ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+    for (const p of peds) {
+      if (Math.hypot(p.vx, p.vy) < 0.05 && !(o.pred === 'acc' && Math.hypot(p.ax, p.ay) > 0.05)) continue;
+      const adv = p.kind === 'adversarial', axc = o.pred === 'acc' ? Math.max(-3, Math.min(3, p.ax || 0)) : 0, ayc = o.pred === 'acc' ? Math.max(-3, Math.min(3, p.ay || 0)) : 0;
+      ctx.strokeStyle = alpha(adv ? TK.alarm : TK.sensor, 0.75); ctx.beginPath();
+      for (let i = 0; i <= 15; i++) { const t = i * 0.1, x = p.x + p.vx * t + 0.5 * axc * t * t, y = p.y + p.vy * t + 0.5 * ayc * t * t; i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)); }
+      ctx.stroke();
+      const t = 1.5, ex = p.x + p.vx * t + 0.5 * axc * t * t, ey = p.y + p.vy * t + 0.5 * ayc * t * t;
+      ctx.setLineDash([]); ctx.beginPath(); ctx.arc(X(ex), Y(ey), 2.5, 0, 7); ctx.fillStyle = alpha(adv ? TK.alarm : TK.sensor, 0.8); ctx.fill(); ctx.setLineDash([4, 4]);
+    }
+    ctx.setLineDash([]);
+  }
+  if (o.space) {
+    ctx.strokeStyle = alpha(TK.violet, 0.55); ctx.fillStyle = alpha(TK.violet, 0.06); ctx.lineWidth = 1.5; ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.arc(X(robot.x), Y(robot.y), (S.R_ROBOT + S.SPACE_R) * sc, 0, 7); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // pedestrians
+  for (const p of peds) {
+    const adv = p.kind === 'adversarial';
+    ctx.fillStyle = adv ? TK.alarm : (p.kind === 'standing' ? alpha(TK.muted, 0.7) : TK.muted);
+    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), S.R_PED * sc, 0, 7); ctx.fill();
+    if (adv && p.state !== 'idle') { ctx.strokeStyle = alpha(TK.alarm, 0.6); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), S.R_PED * sc + 5, 0, 7); ctx.stroke(); }
+    const sp = Math.hypot(p.vx, p.vy);
+    if (sp > 0.05) { ctx.strokeStyle = alpha(adv ? TK.alarm : TK.muted, 0.6); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X(p.x), Y(p.y)); ctx.lineTo(X(p.x + p.vx * 0.8), Y(p.y + p.vy * 0.8)); ctx.stroke(); }
+  }
+  // robot body (oriented)
+  ctx.save(); ctx.translate(X(robot.x), Y(robot.y)); ctx.rotate(robot.th);
+  const L = S.R_ROBOT * sc * 1.25, Wd = S.R_ROBOT * sc * 0.8;
+  ctx.fillStyle = TK.hazard; ctx.strokeStyle = TK.ink; ctx.lineWidth = 1.5;
+  ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-L, -Wd, 2 * L, 2 * Wd, Wd * 0.6); else ctx.rect(-L, -Wd, 2 * L, 2 * Wd); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = TK.ink; ctx.beginPath(); ctx.arc(L * 0.55, 0, Wd * 0.35, 0, 7); ctx.fill();
+  ctx.restore();
+  if (ep.outcome === 'contact' || ep.outcome === 'wall') {
+    ctx.strokeStyle = TK.alarm; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(robot.x), Y(robot.y), sc * 1.1, 0, 7); ctx.stroke();
+  }
+}
+function stepEp(ep, ctrl, theta, obs, a) {
+  SIM.observe(ep, obs);
+  if (ctrl === 'learned') SIM.act(theta, obs, a); else if (ctrl === 'straight') SIM.straight(ep, obs, a); else SIM.planner(ep, obs, a);
+  SIM.step(ep, a[0], a[1]);
+  (ep.trail = ep.trail || []).push([ep.robot.x, ep.robot.y]); if (ep.trail.length > 400) ep.trail.shift();
+}
+
+// ---------- visibility ----------
+const visible = new Map();
+const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => visible.set(e.target, e.isIntersecting)), { rootMargin: '80px' }) : null;
+function watch(el) { visible.set(el, true); io && io.observe(el); }
+const isVis = el => visible.get(el) !== false;
+
+// ---------- hero ----------
+const hero = { cv: $('#heroCanvas'), ep: null, seed: 3, acc: 0, pause: 0, obs: new Float64Array(SIM.OBS), a: new Float64Array(2) };
+function heroReset() { hero.ep = SIM.makeEpisode(hero.seed++, { adversarial: false }); hero.pause = 0; }
+heroReset();
+watch(hero.cv);
+function heroDraw() { const { ctx, w, h } = setup(hero.cv); drawWorld(ctx, w, h, hero.ep, { cover: true, faint: true, shiftX: Math.min(w * 0.18, 220) }); }
+function heroTick(dt) {
+  if (!isVis(hero.cv)) return;
+  if (hero.ep.done) { hero.pause += dt; if (hero.pause > 0.9) heroReset(); }
+  else { hero.acc += dt * (RM ? 3 : 11); while (hero.acc >= 1 && !hero.ep.done) { hero.acc -= 1; stepEp(hero.ep, 'planner', null, hero.obs, hero.a); } }
+  heroDraw();
+}
+redrawers.push(heroDraw);
+
+// ---------- plaza ----------
+const PZ = {
+  cv: $('#plazaCanvas'), lc: $('#learnCanvas'), sc: $('#speedCanvas'), ctrl: 'planner', adv: false, training: false,
+  feat: { mem: false, vel: false, acc: false, space: false }, pedSpeed: 1, robotSpeed: 1.2, log: [], esSeed: 7,
+  es: null, it: null, evalHist: [], evalIt: null, markers: [],
+  ep: null, seed: 777, acc: 0, pause: 0, obs: new Float64Array(SIM.OBS), a: new Float64Array(2),
+  rate: 0, lastSteps: 0, lastT: performance.now()
+};
+const EVAL_SEEDS = Array.from({ length: 40 }, (_, i) => 70000 + i);
+// the live settings: inputs (mem/vel/acc) fix the network's shape; the rest can change mid-training
+function pzOpts() { return { adversarial: PZ.adv, mem: PZ.feat.mem, vel: PZ.feat.vel, acc: PZ.feat.acc, space: PZ.feat.space, spaceW: 0.2, pedSpeed: PZ.pedSpeed, robotSpeed: PZ.robotSpeed }; }
+function pzSyncCfg() { const o = pzOpts(), c = PZ.es.cfg; for (const k of ['adversarial', 'space', 'spaceW', 'pedSpeed', 'robotSpeed']) c[k] = o[k]; }
+function pzNewLearner(seed) { PZ.es = SIM.makeES(seed, pzOpts()); PZ.it = null; PZ.evalIt = null; PZ.evalHist = []; PZ.markers = []; PZ.lastSteps = 0; }
+pzNewLearner(PZ.esSeed);
+function pzNewEp() { const o = pzOpts(); PZ.ep = SIM.makeEpisode(PZ.seed++, o); PZ.obs = new Float64Array(SIM.obsDim(o)); PZ.pause = 0; setFlash(ctrlName(PZ.ctrl), ''); }
+function ctrlName(c) { return c === 'learned' ? 'Your policy · gen ' + PZ.es.gen : c === 'straight' ? 'No avoidance' : 'Hand-written planner'; }
+function setFlash(text, cls) { const f = $('#plazaFlash'); f.textContent = text; f.className = 'flash' + (cls ? ' ' + cls : ''); }
+pzNewEp(); watch(PZ.cv);
+function* evalIter(theta, opts) {
+  let s = 0, c = 0, steps = 0, intr = 0;
+  for (let i = 0; i < EVAL_SEEDS.length; i++) { const ep = SIM.rollout(SIM.act, theta, EVAL_SEEDS[i], opts); if (ep.outcome === 'success') s++; if (ep.outcome === 'contact') c++; steps += ep.t; intr += ep.intr; if (i % 8 === 7) yield null; }
+  return { success: s / EVAL_SEEDS.length, contact: c / EVAL_SEEDS.length, intrusion: steps ? intr / steps : 0 };
+}
+function setCtrl(c) { PZ.ctrl = c; $$('#ctrlSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ctrl === c))); pzNewEp(); }
+$$('#ctrlSeg button').forEach(b => b.addEventListener('click', () => setCtrl(b.dataset.ctrl)));
+function setTraining(on) {
+  PZ.training = on; const b = $('#trainBtn');
+  b.querySelector('span:last-child').textContent = on ? 'Pause' : (PZ.es.gen ? 'Resume' : 'Train');
+  b.classList.toggle('primary', !on);
+  if (on && PZ.ctrl !== 'learned') setCtrl('learned');
+}
+$('#trainBtn').addEventListener('click', () => setTraining(!PZ.training));
+$('#resetBtn').addEventListener('click', () => { pzNewLearner(7 + Math.floor(Math.random() * 1000)); setTraining(false); $('#featMsg').textContent = ''; pzNewEp(); drawLearn(); updCounters(); });
+$('#nextBtn').addEventListener('click', pzNewEp);
+function pzMark() { if (PZ.markers[PZ.markers.length - 1] !== PZ.es.gen) PZ.markers.push(PZ.es.gen); PZ.evalIt = null; drawLearn(); }
+$('#advBox').addEventListener('change', e => { PZ.adv = e.target.checked; pzSyncCfg(); pzMark(); pzNewEp(); });
+$$('.feat input').forEach(cb => cb.addEventListener('change', () => {
+  const k = cb.dataset.feat; PZ.feat[k] = cb.checked;
+  if (k === 'space') { pzSyncCfg(); pzMark(); $('#featMsg').textContent = cb.checked ? 'Reward changed: training continues with the new reward (dashed line on the curve).' : 'Personal-space penalty off (dashed line on the curve).'; }
+  else { const wasTraining = PZ.training; pzNewLearner(PZ.esSeed); $('#featMsg').textContent = `Inputs changed: the brain starts from scratch (${SIM.obsDim(pzOpts())} inputs).`; drawLearn(); updCounters(); if (wasTraining) setTraining(true); else $('#trainBtn').querySelector('span:last-child').textContent = 'Train'; }
+  pzNewEp();
+}));
+function speedOut() { $('#oPedSpeed').textContent = PZ.pedSpeed.toFixed(1) + '×'; $('#oRobotSpeed').textContent = PZ.robotSpeed.toFixed(1) + ' m/s'; }
+for (const [id, key] of [['pedSpeed', 'pedSpeed'], ['robotSpeed', 'robotSpeed']]) {
+  const el = $('#' + id);
+  el.addEventListener('input', () => { PZ[key] = parseFloat(el.value); speedOut(); pzSyncCfg(); });
+  el.addEventListener('change', () => { pzMark(); pzNewEp(); });
+}
+speedOut();
+const P100 = x => Math.round(x * 100) + '%';
+$('#testBtn').addEventListener('click', () => {
+  const seeds = Array.from({ length: 100 }, (_, i) => 90000 + i), o = pzOpts();
+  const rows = [SIM.evaluate(SIM.straight, null, seeds, o), SIM.evaluate(SIM.planner, null, seeds, o), SIM.evaluate(SIM.act, PZ.es.theta, seeds, o)];
+  $$('#testTable tbody tr').forEach((tr, i) => { tr.children[1].textContent = P100(rows[i].success); tr.children[2].textContent = P100(rows[i].contact); tr.children[3].textContent = P100(rows[i].intrusion); });
+  const lbl = $('#testTable tbody tr:last-child td'); lbl.textContent = 'Your policy (gen ' + PZ.es.gen + ')' + (PZ.adv ? ', adversarial on' : '');
+  const fl = [PZ.feat.mem && 'memory', PZ.feat.vel && 'trajectory', PZ.feat.acc && 'derivative', PZ.feat.space && 'personal space'].filter(Boolean);
+  PZ.log.push({ feats: fl.length ? fl.join(' + ') : 'baseline', ped: PZ.pedSpeed, rob: PZ.robotSpeed, adv: PZ.adv, gen: PZ.es.gen, L: rows[2], P: rows[1] });
+  renderLog();
+});
+function renderLog() {
+  const tb = $('#logTable tbody');
+  if (!PZ.log.length) { tb.innerHTML = '<tr class="empty"><td colspan="12">No experiments yet. Train for a while, then press Run test.</td></tr>'; return; }
+  tb.innerHTML = '';
+  PZ.log.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    const cells = [String(i + 1), r.feats, r.ped.toFixed(1) + '×', r.rob.toFixed(1) + ' m/s', r.adv ? 'on' : 'off', String(r.gen), P100(r.L.success), P100(r.L.contact), P100(r.L.intrusion), P100(r.P.success), P100(r.P.contact), P100(r.P.intrusion)];
+    cells.forEach((c, j) => { const td = document.createElement('td'); td.textContent = c; if (j === 0 || j >= 2 && j !== 4) td.className = 'num'; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+}
+$('#clearLogBtn').addEventListener('click', () => { PZ.log = []; renderLog(); });
+const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : String(n);
+function updCounters() {
+  $('#cGen').textContent = PZ.es.gen; $('#cEp').textContent = fmt(PZ.es.episodes); $('#cSteps').textContent = fmt(PZ.es.steps);
+  $('#cRate').textContent = PZ.training ? fmt(Math.round(PZ.rate)) : '0';
+  $('#cCompare').textContent = PZ.training && PZ.rate > 0 ? `${fmt(Math.round(PZ.rate))} steps/s in one world at a time, about ${Math.max(1, Math.round(290000 / PZ.rate))}× slower, on a tenth of the problem.` : 'press Train to measure.';
+}
+function drawLearn() {
+  const { ctx, w, h } = setup(PZ.lc), padL = 30, padB = 18, padT = 6, padR = 8;
+  ctx.clearRect(0, 0, w, h);
+  const gx0 = padL, gx1 = w - padR, gy0 = padT, gy1 = h - padB;
+  ctx.strokeStyle = TK.line; ctx.lineWidth = 1; ctx.font = `11px ${TK.mono}`; ctx.fillStyle = TK.muted; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (const v of [0, 0.5, 1]) { const y = gy1 - v * (gy1 - gy0); ctx.beginPath(); ctx.moveTo(gx0, y); ctx.lineTo(gx1, y); ctx.stroke(); ctx.fillText(Math.round(v * 100) + '%', gx0 - 4, y); }
+  const H = PZ.evalHist, maxG = Math.max(40, H.length ? H[H.length - 1].gen : 0);
+  const X = g => gx0 + (g / maxG) * (gx1 - gx0), Y = v => gy1 - v * (gy1 - gy0);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText('generation ' + maxG, gx1 - 90, h - 3); ctx.fillText('0', gx0, h - 3);
+  for (const m of PZ.markers) { ctx.strokeStyle = alpha(TK.alarm, 0.5); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(X(m), gy0); ctx.lineTo(X(m), gy1); ctx.stroke(); ctx.setLineDash([]); }
+  if (!H.length) { ctx.fillStyle = TK.muted; ctx.textAlign = 'center'; ctx.fillText('No training yet: the curve appears here', (gx0 + gx1) / 2, (gy0 + gy1) / 2); $('#learnReadout').textContent = 'Dashed lines mark setting changes.'; return; }
+  for (const [key, col] of [['intrusion', TK.violet], ['contact', TK.alarm], ['success', TK.sensor]]) {
+    ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.beginPath();
+    H.forEach((p, i) => { const x = X(p.gen), y = Y(p[key]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    const l = H[H.length - 1]; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(l.gen), Y(l[key]), 3.5, 0, 7); ctx.fill();
+  }
+  const l = H[H.length - 1];
+  $('#learnReadout').innerHTML = `gen <b>${l.gen}</b> · goal <b>${P100(l.success)}</b> · touch <b>${P100(l.contact)}</b> · within 1 m <b>${P100(l.intrusion)}</b> of steps`;
+}
+redrawers.push(drawLearn);
+function plazaTrain() {
+  if (!PZ.training) return;
+  const t0 = performance.now();
+  while (performance.now() - t0 < 10) {
+    if (PZ.evalIt) { const r = PZ.evalIt.next(); if (r.done) { PZ.evalHist.push(Object.assign({ gen: PZ.es.gen }, r.value)); PZ.evalIt = null; drawLearn(); } continue; }
+    if (!PZ.it) PZ.it = PZ.es.genIter();
+    const r = PZ.it.next();
+    if (r.done) { PZ.it = null; if (PZ.es.gen % 3 === 0 || PZ.es.gen === 1) PZ.evalIt = evalIter(PZ.es.theta.slice(), pzOpts()); }
+  }
+  const now = performance.now();
+  if (now - PZ.lastT > 700) { PZ.rate = (PZ.es.steps - PZ.lastSteps) / ((now - PZ.lastT) / 1000); PZ.lastSteps = PZ.es.steps; PZ.lastT = now; updCounters(); }
+}
+function speedDraw() {
+  const { ctx, w, h } = setup(PZ.sc), sh = PZ.ep.speedHist, n = 400;
+  ctx.clearRect(0, 0, w, h);
+  const vmax = Math.max(PZ.robotSpeed, 0.4), X = i => i / n * w, Y = v => h - 4 - v / vmax * (h * 0.55), YA = a => h * 0.3 - Math.max(-1, Math.min(1, a / (vmax * 4))) * h * 0.26;
+  ctx.strokeStyle = TK.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, h * 0.3); ctx.lineTo(w, h * 0.3); ctx.moveTo(0, Y(0)); ctx.lineTo(w, Y(0)); ctx.stroke();
+  if (sh.length < 2) return;
+  ctx.strokeStyle = TK.violet; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let i = 1; i < sh.length; i++) { const a = (sh[i] - sh[i - 1]) / SIM.DT; i > 1 ? ctx.lineTo(X(i), YA(a)) : ctx.moveTo(X(i), YA(a)); } ctx.stroke();
+  ctx.strokeStyle = TK.hazard; ctx.lineWidth = 2; ctx.beginPath();
+  sh.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))); ctx.stroke();
+  ctx.fillStyle = TK.muted; ctx.font = `11px ${TK.mono}`; ctx.textAlign = 'right'; ctx.fillText(sh[sh.length - 1].toFixed(2) + ' m/s', w - 4, 11);
+}
+function plazaDraw() { const { ctx, w, h } = setup(PZ.cv); drawWorld(ctx, w, h, PZ.ep, { space: PZ.feat.space, pred: PZ.feat.acc ? 'acc' : PZ.feat.vel ? 'vel' : null }); speedDraw(); $('#plazaHud').textContent = `t ${(PZ.ep.t * SIM.DT).toFixed(1)} s · closest ${PZ.ep.minClear > 50 ? '—' : Math.max(0, PZ.ep.minClear).toFixed(2) + ' m'}`; }
+function plazaTick(dt) {
+  plazaTrain();
+  if (!isVis(PZ.cv)) return;
+  if (PZ.ep.done) {
+    if (PZ.pause === 0) { const o = PZ.ep.outcome; setFlash(o === 'success' ? 'Reached goal' : o === 'contact' ? 'Touched a person' : o === 'wall' ? 'Hit the wall' : 'Ran out of time', o); }
+    PZ.pause += dt; if (PZ.pause > 1.1) pzNewEp();
+  } else {
+    PZ.acc += dt * 30;
+    while (PZ.acc >= 1 && !PZ.ep.done) { PZ.acc -= 1; stepEp(PZ.ep, PZ.ctrl, PZ.es.theta, PZ.obs, PZ.a); }
+    if (PZ.ctrl === 'learned' && PZ.ep.t % 10 === 0) setFlash(ctrlName('learned'), '');
+  }
+  plazaDraw();
+}
+redrawers.push(plazaDraw);
+drawLearn(); updCounters();
+
+// ---------- reward designer ----------
+const RW = {
+  cv: $('#rewardCanvas'), t: 0,
+  peds: [[7, 4.6], [7.6, 5.5], [8.3, 4.9], [7.2, 6.2], [8.8, 5.8], [8.1, 3.9], [9.4, 4.4]],
+  paths: [
+    { key: 'A', name: 'Bulldozer', pts: [[1, 5], [15, 5]], st: { prog: 20, steps: 160, near: 2, contacts: 2, space: 8, success: 1 }, verdict: 'The robot learns to <b>bulldoze</b>: the fastest route, straight through people.' },
+    { key: 'B', name: 'Polite detour', pts: [[1, 5], [4, 5], [5.8, 8.2], [10.4, 8.6], [12.4, 6.2], [15, 5]], st: { prog: 20, steps: 420, near: 1, contacts: 0, space: 6, success: 1 }, verdict: 'The robot learns the <b>polite detour</b>: slower, and it never touches anyone. This is the behavior we wanted.' },
+    { key: 'C', name: 'Shaver', pts: [[1, 5], [5, 5], [6.4, 3.4], [9.2, 3.1], [11, 4.6], [15, 5]], st: { prog: 20, steps: 230, near: 6, contacts: 0, space: 15, success: 1 }, verdict: 'The robot learns to <b>shave past</b> people: no contact, but inches away, every time.' },
+    { key: 'D', name: 'Freezer', pts: [[1, 5], [5.4, 5]], st: { prog: 6, steps: 700, near: 0, contacts: 0, space: 0, success: 0 }, verdict: 'The robot learns to <b>freeze</b>: it never gets near anyone, and it never arrives.' }
+  ],
+  presets: { real: [1, 0.01, 1, 10, 0.2], hurry: [1, 0.1, 1, 0, 0.2], time: [1, 0.1, 1, 10, 0.2], scared: [1, 0.01, 20, 20, 2] }
+};
+const RW_IDS = ['wProgress', 'wTime', 'wNear', 'wContact', 'wSpace'];
+function rwWeights() { return RW_IDS.map(id => parseFloat($('#' + id).value)); }
+function rwScore(st, w) { return w[0] * st.prog - w[1] * st.steps - w[2] * st.near - w[3] * st.contacts - w[4] * st.space + (st.success ? 10 : 0); }
+function rwUpdate() {
+  const w = rwWeights();
+  $('#oProgress').textContent = '+' + w[0].toFixed(2); $('#oTime').textContent = '−' + w[1].toFixed(3); $('#oNear').textContent = '−' + w[2].toFixed(1); $('#oContact').textContent = '−' + w[3].toFixed(0); $('#oSpace').textContent = '−' + w[4].toFixed(2);
+  const sc = RW.paths.map(p => rwScore(p.st, w)); let best = 0; sc.forEach((s, i) => { if (s > sc[best]) best = i; });
+  if (RW.best !== best) { RW.best = best; RW.t = 0; }
+  const m = Math.max(1, ...sc.map(Math.abs));
+  $('#rewardScores').innerHTML = RW.paths.map((p, i) => {
+    const v = sc[i], wid = Math.abs(v) / m * 50, left = v >= 0 ? 50 : 50 - wid;
+    const col = i === best ? TK.hazard : (v < 0 ? TK.alarm : TK.muted);
+    return `<div class="score${i === best ? ' win' : ''}"><span class="name">${p.key} · ${p.name}</span><span class="track"><span style="position:absolute;left:50%;top:0;bottom:0;border-left:1px solid ${TK.line}"></span><span class="fill" style="left:${left}%;width:${wid}%;background:${col}"></span></span><span class="v">${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}</span></div>`;
+  }).join('');
+  $('#rewardVerdict').innerHTML = RW.paths[best].verdict;
+  const pr = Object.entries(RW.presets).find(([, v]) => v.every((x, i) => Math.abs(x - w[i]) < 1e-9));
+  $$('#presets button').forEach(b => b.setAttribute('aria-pressed', String(!!pr && pr[0] === b.dataset.preset)));
+  rwDraw();
+}
+function pathLen(pts) { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
+function pathAt(pts, d) { for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); if (d <= l) { const f = d / l; return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f]; } d -= l; } return pts[pts.length - 1]; }
+function rwDraw() {
+  const { ctx, w, h } = setup(RW.cv), sc = Math.min(w / 16, h / 10), ox = (w - 16 * sc) / 2, oy = (h - 10 * sc) / 2;
+  const X = x => ox + x * sc, Y = y => oy + y * sc;
+  ctx.fillStyle = TK.ink; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = alpha(TK.line, 0.8); ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = 0; x <= 16; x++) { ctx.moveTo(X(x), Y(0)); ctx.lineTo(X(x), Y(10)); } for (let y = 0; y <= 10; y++) { ctx.moveTo(X(0), Y(y)); ctx.lineTo(X(16), Y(y)); } ctx.stroke();
+  // personal space halos
+  for (const [px, py] of RW.peds) { ctx.fillStyle = alpha(TK.alarm, 0.07); ctx.beginPath(); ctx.arc(X(px), Y(py), sc * 1.0, 0, 7); ctx.fill(); }
+  RW.paths.forEach((p, i) => {
+    const win = i === RW.best;
+    ctx.strokeStyle = win ? TK.hazard : alpha(TK.muted, 0.45); ctx.lineWidth = win ? 4 : 2; ctx.setLineDash(win ? [] : [5, 5]);
+    ctx.beginPath(); p.pts.forEach((q, j) => j ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1]))); ctx.stroke(); ctx.setLineDash([]);
+    const lab = p.pts[Math.min(p.pts.length - 1, Math.floor(p.pts.length / 2))], lx = p.key === 'A' ? 12.5 : p.key === 'D' ? 5.4 : lab[0], ly = p.key === 'A' ? 5 : lab[1];
+    ctx.font = `700 ${Math.max(11, sc * 0.42)}px ${TK.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(p.key).width + 10; ctx.fillStyle = win ? TK.hazard : TK.panel; ctx.fillRect(X(lx) - tw / 2, Y(ly) - sc * 0.32 - (p.key === 'D' ? sc * 0.7 : 0), tw, sc * 0.64);
+    ctx.fillStyle = win ? TK.ink : TK.paper; ctx.fillText(p.key, X(lx), Y(ly) - (p.key === 'D' ? sc * 0.7 : 0));
+  });
+  for (const [px, py] of RW.peds) { ctx.fillStyle = TK.muted; ctx.beginPath(); ctx.arc(X(px), Y(py), sc * 0.3, 0, 7); ctx.fill(); }
+  // contacts on the bulldozer route
+  ctx.strokeStyle = TK.alarm; ctx.lineWidth = 2.5;
+  for (const cx of [7.6, 8.3]) { const y = 5; ctx.beginPath(); ctx.moveTo(X(cx) - 6, Y(y) - 6); ctx.lineTo(X(cx) + 6, Y(y) + 6); ctx.moveTo(X(cx) + 6, Y(y) - 6); ctx.lineTo(X(cx) - 6, Y(y) + 6); ctx.stroke(); }
+  // start, goal
+  ctx.strokeStyle = TK.hazard; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(15), Y(5), sc * 0.6, 0, 7); ctx.stroke();
+  ctx.fillStyle = TK.paper; ctx.font = `600 ${Math.max(11, sc * 0.36)}px ${TK.mono}`; ctx.textAlign = 'center'; ctx.fillText('start', X(1), Y(5) + sc * 0.8); ctx.fillText('goal', X(15), Y(5) + sc * 1.1);
+  // moving robot along the winner
+  const p = RW.paths[RW.best], L = pathLen(p.pts), d = RM ? L : (RW.t * 3.2) % (L + 2);
+  const q = pathAt(p.pts, Math.min(d, L));
+  ctx.fillStyle = TK.hazard; ctx.strokeStyle = TK.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(q[0]), Y(q[1]), sc * 0.34, 0, 7); ctx.fill(); ctx.stroke();
+  if (p.key === 'D' && d >= L) { ctx.fillStyle = TK.paper; ctx.fillRect(X(q[0]) - 5, Y(q[1]) - sc * 1.1, 3.5, 12); ctx.fillRect(X(q[0]) + 1.5, Y(q[1]) - sc * 1.1, 3.5, 12); }
+  ctx.fillStyle = TK.muted; ctx.textAlign = 'left'; ctx.font = `500 ${Math.max(10, sc * 0.3)}px ${TK.mono}`; ctx.fillText('illustration: routes run to the end even after a contact', X(0.2), Y(9.6));
+}
+RW_IDS.forEach(id => $('#' + id).addEventListener('input', rwUpdate));
+$$('#presets button').forEach(b => b.addEventListener('click', () => { RW.presets[b.dataset.preset].forEach((v, i) => $('#' + RW_IDS[i]).value = v); rwUpdate(); }));
+watch(RW.cv);
+function rwTick(dt) { if (!isVis(RW.cv) || RM) return; RW.t += dt; rwDraw(); }
+redrawers.push(rwUpdate);
+rwUpdate();
+
+// ---------- PPO ----------
+const PP = { cv: $('#ppoCanvas'), A: 1 };
+function clip(x, a, b) { return Math.max(a, Math.min(b, x)); }
+function ppoObj(r, A, e) { return Math.min(r * A, clip(r, 1 - e, 1 + e) * A); }
+function ppoDraw() {
+  const r = parseFloat($('#ratio').value), e = parseFloat($('#eps').value), A = PP.A;
+  $('#oRatio').textContent = r.toFixed(2); $('#oEps').textContent = e.toFixed(2);
+  const { ctx, w, h } = setup(PP.cv), pl = 54, pr = 18, pt = 26, pb = 40;
+  const x0 = pl, x1 = w - pr, y0 = pt, y1 = h - pb, R0 = 0, R1 = 2.2, V0 = A > 0 ? -0.2 : -2.3, V1 = A > 0 ? 2.3 : 0.2;
+  const X = v => x0 + (v - R0) / (R1 - R0) * (x1 - x0), Y = v => y1 - (v - V0) / (V1 - V0) * (y1 - y0);
+  ctx.fillStyle = TK.ink; ctx.fillRect(0, 0, w, h);
+  // flat (zero-gradient) region
+  ctx.fillStyle = alpha(TK.muted, 0.12);
+  if (A > 0) ctx.fillRect(X(1 + e), y0, x1 - X(1 + e), y1 - y0); else ctx.fillRect(x0, y0, X(1 - e) - x0, y1 - y0);
+  ctx.fillStyle = TK.muted; ctx.font = `600 12px ${TK.mono}`; ctx.textAlign = 'center';
+  ctx.fillText('flat: no gradient', A > 0 ? (X(1 + e) + x1) / 2 : (x0 + X(1 - e)) / 2, y0 + 16);
+  // trust band
+  ctx.strokeStyle = alpha(TK.sensor, 0.5); ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+  for (const v of [1 - e, 1, 1 + e]) { ctx.beginPath(); ctx.moveTo(X(v), y0); ctx.lineTo(X(v), y1); ctx.stroke(); }
+  ctx.setLineDash([]);
+  // axes
+  ctx.strokeStyle = TK.line; ctx.beginPath(); ctx.moveTo(x0, Y(0)); ctx.lineTo(x1, Y(0)); ctx.moveTo(x0, y0); ctx.lineTo(x0, y1); ctx.stroke();
+  ctx.fillStyle = TK.muted; ctx.font = `12px ${TK.mono}`; ctx.textAlign = 'center';
+  for (const v of [0, 0.5, 1, 1.5, 2]) ctx.fillText(v.toFixed(1), X(v), y1 + 18);
+  ctx.fillText('ratio r', (x0 + x1) / 2, h - 6);
+  ctx.fillStyle = TK.sensor; ctx.fillText('1−ε', X(1 - e), y0 - 8); ctx.fillText('1+ε', X(1 + e), y0 - 8);
+  ctx.save(); ctx.translate(16, (y0 + y1) / 2); ctx.rotate(-Math.PI / 2); ctx.fillStyle = TK.muted; ctx.fillText('objective', 0, 0); ctx.restore();
+  // unclipped
+  ctx.strokeStyle = alpha(TK.paper, 0.45); ctx.setLineDash([6, 5]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X(R0), Y(R0 * A)); ctx.lineTo(X(R1), Y(R1 * A)); ctx.stroke(); ctx.setLineDash([]);
+  // clipped
+  ctx.strokeStyle = TK.hazard; ctx.lineWidth = 3.5; ctx.beginPath();
+  for (let i = 0; i <= 220; i++) { const v = R0 + (R1 - R0) * i / 220; const y = Y(ppoObj(v, A, e)); i ? ctx.lineTo(X(v), y) : ctx.moveTo(X(v), y); } ctx.stroke();
+  // handle
+  const hy = Y(ppoObj(r, A, e)), capped = A > 0 ? r > 1 + e : r < 1 - e;
+  ctx.fillStyle = capped ? TK.muted : TK.hazard; ctx.strokeStyle = TK.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(r), hy, 9, 0, 7); ctx.fill(); ctx.stroke();
+  if (!capped) { ctx.strokeStyle = TK.hazard; ctx.lineWidth = 2; const dir = A > 0 ? 1 : -1; ctx.beginPath(); ctx.moveTo(X(r) + 14 * dir, hy); ctx.lineTo(X(r) + 40 * dir, hy); ctx.lineTo(X(r) + 33 * dir, hy - 6); ctx.moveTo(X(r) + 40 * dir, hy); ctx.lineTo(X(r) + 33 * dir, hy + 6); ctx.stroke(); }
+  ctx.fillStyle = alpha(TK.paper, 0.6); ctx.textAlign = 'left'; ctx.font = `12px ${TK.mono}`; ctx.fillText('dashed: without the clip', x0 + 8, A > 0 ? y0 + 16 : y1 - 10);
+  let msg;
+  if (A > 0 && capped) msg = `r = <span class="mono">${r.toFixed(2)}</span> is past 1 + ε = <span class="mono">${(1 + e).toFixed(2)}</span>. The objective is capped, so the gradient is zero. This batch can't make the action any more likely.`;
+  else if (A > 0) msg = `Good action, and r = <span class="mono">${r.toFixed(2)}</span> is still inside the trust region. PPO keeps pushing its probability up (arrow).`;
+  else if (capped) msg = `Bad action, already made rarer than 1 − ε = <span class="mono">${(1 - e).toFixed(2)}</span>. Capped: no further push from this batch.`;
+  else msg = `Bad action at r = <span class="mono">${r.toFixed(2)}</span>, still too likely. PPO keeps pushing its probability down. Note there is no cap on this side: mistakes always get corrected.`;
+  $('#ppoReadout').innerHTML = msg;
+}
+$('#ratio').addEventListener('input', ppoDraw); $('#eps').addEventListener('input', ppoDraw);
+$$('#advSeg button').forEach(b => b.addEventListener('click', () => { PP.A = +b.dataset.adv; $$('#advSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); ppoDraw(); }));
+{ let drag = false; const toR = ev => { const rc = PP.cv.getBoundingClientRect(); const v = (ev.clientX - rc.left - 54) / (rc.width - 72) * 2.2; $('#ratio').value = clip(v, 0.2, 2).toFixed(2); ppoDraw(); };
+  PP.cv.addEventListener('pointerdown', ev => { drag = true; PP.cv.setPointerCapture(ev.pointerId); toR(ev); });
+  PP.cv.addEventListener('pointermove', ev => { if (drag) toR(ev); });
+  PP.cv.addEventListener('pointerup', () => drag = false); }
+redrawers.push(ppoDraw); ppoDraw();
+
+// ---------- real curves ----------
+const RUNS = [
+  { k: 'legacy', name: 'Legacy', col: () => TK.muted },
+  { k: 'v1', name: 'v1', col: () => TK.hazard },
+  { k: 'v2', name: 'v2', col: () => TK.sensor },
+  { k: 'v3', name: 'v3', col: () => TK.violet }
+];
+const CV = { cv: $('#curveCanvas'), metric: 2, on: { legacy: true, v1: true, v2: true, v3: true }, p: 1, hover: null };
+$('#runChips').innerHTML = RUNS.map(r => `<button type="button" class="runchip" data-run="${r.k}" aria-pressed="true"><i style="background:var(--${r.k === 'legacy' ? 'muted' : r.k === 'v1' ? 'hazard' : r.k === 'v2' ? 'sensor' : 'violet'})"></i>${r.name}</button>`).join('');
+$$('#runChips button').forEach(b => b.addEventListener('click', () => { CV.on[b.dataset.run] = !CV.on[b.dataset.run]; b.setAttribute('aria-pressed', String(CV.on[b.dataset.run])); curveDraw(); }));
+$$('#metricSeg button').forEach(b => b.addEventListener('click', () => { CV.metric = +b.dataset.metric; $$('#metricSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); CV.p = RM ? 1 : 0; curveDraw(); }));
+function curveDraw() {
+  const { ctx, w, h } = setup(CV.cv), pl = 58, pr = 20, pt = 24, pb = 44, m = CV.metric;
+  const x0 = pl, x1 = w - pr, y0 = pt, y1 = h - pb;
+  ctx.fillStyle = TK.ink; ctx.fillRect(0, 0, w, h);
+  const isPct = m !== 4; let lo = 0, hi = 1;
+  if (m === 4) { lo = -15; hi = 30; }
+  const XM = 4.05, X = v => x0 + v / XM * (x1 - x0), Y = v => y1 - (v - lo) / (hi - lo) * (y1 - y0);
+  ctx.strokeStyle = TK.line; ctx.lineWidth = 1; ctx.font = `12px ${TK.mono}`; ctx.fillStyle = TK.muted; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  const ticks = isPct ? [0, 0.25, 0.5, 0.75, 1] : [-10, 0, 10, 20, 30];
+  for (const v of ticks) { const y = Y(v); ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); ctx.fillText(isPct ? Math.round(v * 100) + '%' : v, x0 - 8, y); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  for (const v of [0, 1, 2, 3, 4]) ctx.fillText(v + 'B', X(v), y1 + 20);
+  ctx.fillText('environment steps (billions) · each run = 2 hours on one GPU', (x0 + x1) / 2, h - 6);
+  for (const r of RUNS) {
+    if (!CV.on[r.k]) continue; const pts = CURVES[r.k].pts.filter(p => p[m] !== undefined); if (!pts.length) continue;
+    const n = Math.max(2, Math.floor(pts.length * CV.p));
+    ctx.strokeStyle = r.col(); ctx.lineWidth = r.k === 'legacy' ? 2 : 2.6; ctx.beginPath();
+    for (let i = 0; i < n; i++) { const x = X(pts[i][0]), y = Y(clip(pts[i][m], lo, hi)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+    const l = pts[n - 1]; ctx.fillStyle = r.col(); ctx.beginPath(); ctx.arc(X(l[0]), Y(clip(l[m], lo, hi)), 4, 0, 7); ctx.fill();
+    if (CV.p >= 1) { ctx.font = `600 12px ${TK.mono}`; ctx.textAlign = 'left'; ctx.fillText(r.name, Math.min(X(l[0]) + 8, x1 - 50), Y(clip(l[m], lo, hi)) - 8); }
+  }
+  if (m === 5 && !CURVES.legacy.pts[0][5] && CV.on.legacy) { ctx.fillStyle = TK.muted; ctx.textAlign = 'right'; ctx.font = `12px ${TK.mono}`; ctx.fillText('legacy had no adversarial pedestrians', x1 - 6, y0 + 14); }
+  if (CV.p >= 1 && (m === 2 || m === 3)) {
+    ctx.textAlign = 'left'; ctx.font = `12px ${TK.mono}`;
+    const ax = X(2.15) + 10, ay = m === 2 ? Y(0.36) : Y(0.6);
+    ctx.strokeStyle = alpha(TK.paper, 0.4); ctx.beginPath(); ctx.moveTo(X(2.12), ay); ctx.lineTo(ax + 6, m === 2 ? Y(0.58) : Y(0.3)); ctx.stroke();
+    const bx = ax + 8, by = m === 2 ? Y(0.58) : Y(0.3), lines = ['v1–v3 plateau. In every run the speed', 'noise sat at its ceiling (e¹ ≈ 2.72):', 'speed became a go/stop switch. A suspect.'];
+    ctx.fillStyle = alpha(TK.panel, 0.92); const bw = Math.min(330, x1 - bx); ctx.fillRect(bx, by - 14, bw, 56); ctx.strokeStyle = TK.line; ctx.strokeRect(bx, by - 14, bw, 56);
+    ctx.fillStyle = TK.paper; lines.forEach((s, i) => ctx.fillText(s, bx + 8, by + 2 + i * 16));
+    if (CV.on.legacy && m === 2) { ctx.fillStyle = TK.muted; ctx.fillText('legacy: straight walkers only, 96%', X(2.6), Y(0.9)); }
+  }
+  if (CV.hover !== null && CV.p >= 1) {
+    const hx = clip(CV.hover, x0, x1), xv = (hx - x0) / (x1 - x0) * XM;
+    ctx.strokeStyle = alpha(TK.paper, 0.35); ctx.beginPath(); ctx.moveTo(hx, y0); ctx.lineTo(hx, y1); ctx.stroke();
+    const rows = [];
+    for (const r of RUNS) { if (!CV.on[r.k]) continue; const pts = CURVES[r.k].pts; if (xv > pts[pts.length - 1][0] + 0.02) continue; let best = pts[0]; for (const p of pts) if (Math.abs(p[0] - xv) < Math.abs(best[0] - xv)) best = p; if (best[m] === undefined) continue; rows.push([r, best]); ctx.fillStyle = r.col(); ctx.beginPath(); ctx.arc(X(best[0]), Y(clip(best[m], lo, hi)), 4.5, 0, 7); ctx.fill(); }
+    if (rows.length) {
+      ctx.font = `600 12px ${TK.mono}`; const bw = 190, bh = 22 + rows.length * 18, bx = hx + 12 + bw > x1 ? hx - 12 - bw : hx + 12, by = y0 + 8;
+      ctx.fillStyle = alpha(TK.panel, 0.95); ctx.fillRect(bx, by, bw, bh); ctx.strokeStyle = TK.line; ctx.strokeRect(bx, by, bw, bh);
+      ctx.fillStyle = TK.muted; ctx.textAlign = 'left'; ctx.fillText(`${xv.toFixed(2)}B steps`, bx + 10, by + 16);
+      rows.forEach(([r, p], i) => { ctx.fillStyle = r.col(); ctx.fillText(`${r.name.padEnd(7)} ${isPct ? (p[m] * 100).toFixed(1) + '%' : p[m].toFixed(1)}  · ${p[1].toFixed(0)} min`, bx + 10, by + 34 + i * 18); });
+    }
+  }
+}
+CV.cv.addEventListener('pointermove', ev => { const rc = CV.cv.getBoundingClientRect(); CV.hover = ev.clientX - rc.left; curveDraw(); });
+CV.cv.addEventListener('pointerleave', () => { CV.hover = null; curveDraw(); });
+watch(CV.cv);
+function curveTick(dt) { if (CV.p < 1 && isVis(CV.cv)) { CV.p = Math.min(1, CV.p + dt / 1.4); curveDraw(); } }
+redrawers.push(curveDraw); curveDraw();
+
+// ---------- denominator ----------
+const DEN = [
+  { id: 'm0', max: 50, unit: '%', vals: [37.2, 35.2, 40.0, 38.5] },
+  { id: 'm1', max: 80, unit: '', vals: [61, 55, 56, 27] },
+  { id: 'm2', max: 500, unit: ' s', vals: [462, 388, 405, 377] }
+];
+const DEN_NAMES = ['RL v1', 'RL v2', 'RL v3', 'Planner'];
+DEN.forEach(d => { $('#' + d.id + ' .bars').innerHTML = d.vals.map((v, i) => `<div class="brow"><span>${DEN_NAMES[i]}</span><span class="t"><span class="b" style="background:${i === 3 ? 'var(--sensor)' : 'var(--hazard)'}" data-w="${v / d.max * 100}"></span></span><span class="val">${v}${d.unit}</span></div>`).join(''); });
+let denOpen = false;
+function denGrow(id) { $$('#' + id + ' .b').forEach(b => { b.style.width = b.dataset.w + '%'; }); }
+function denRender() {
+  $('#m1').classList.toggle('hidden', !denOpen); $('#m2').classList.toggle('hidden', !denOpen);
+  ['m1', 'm2'].forEach(id => denOpen ? denGrow(id) : $$('#' + id + ' .b').forEach(b => b.style.width = '0'));
+  $('#denomBtn').textContent = denOpen ? 'Show only the headline' : 'Show the full table';
+  $('#denomCap').textContent = denOpen ? 'Showing 3 of 3 metrics' : 'Showing 1 of 3 metrics';
+  $('#denomLesson').innerHTML = denOpen ? 'Count everyone and the learned policy bumped ordinary people in <em>more than twice as many patrols</em> (55–61 vs 27 of 80) and was slower. Per 100 person-seconds nearby: 1.23 contacts vs 0.24.' : 'On the metric we trained for, every version looks <em>about even</em> with the planner.';
+}
+$('#denomBtn').addEventListener('click', () => { denOpen = !denOpen; denRender(); });
+denGrow('m0'); denRender();
+
+// ---------- real or fake ----------
+$$('#quiz [data-pick]').forEach(btn => btn.addEventListener('click', () => {
+  const picked = btn.closest('.clip');
+  $$('#quiz .clip').forEach(c => { c.classList.add(c.dataset.truth); c.querySelector('.why').hidden = false; const b = c.querySelector('[data-pick]'); b.disabled = true; b.textContent = c === picked ? (c.dataset.truth === 'real' ? 'Your pick: correct' : 'Your pick: fooled, like the check') : (c.dataset.truth === 'real' ? 'The real one' : 'The fake'); c.querySelector('.badge').textContent = c.dataset.truth === 'real' ? 'CHECK: SUCCESS · CONFIRMED' : 'CHECK: SUCCESS · WRONG'; });
+  $('#quizLesson').hidden = false;
+}));
+if (RM) $$('video[autoplay]').forEach(v => { v.removeAttribute('autoplay'); v.pause(); });
+
+// ---------- industries ----------
+const ICON = {
+  box: '<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
+  gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
+  bolt: '<path d="M13 2L5 13h6l-1 9 8-11h-6z"/>',
+  crane: '<path d="M4 21h8M7 21V5h12M7 5l4-3M15 5v6M13 11h4v3h-4z"/>',
+  leaf: '<path d="M5 19c0-8 6-13 14-14 0 8-5 14-13 14"/><path d="M5 19l8-8"/>',
+  cross: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/>',
+  cart: '<path d="M3 4h2l2 11h11l2-8H6.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
+  shield: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>'
+};
+const IND = [
+  { n: 'Warehousing & logistics', i: 'box', does: ['moves totes and pallets among people picking orders', 'restocks shelves overnight and during shifts'], sim: ['blind corners and shift-change crowds', 'spilled loads and blocked aisles', 'forklifts and people sharing a lane'], m: ['contacts per 1,000 hours near people', 'near misses per aisle per shift', 'throughput lost to safety stops'] },
+  { n: 'Manufacturing', i: 'gear', does: ['tends machines and carries parts between cells', 'picks varied parts from bins'], sim: ['a person reaching into the work cell', 'part variation and worn fixtures', 'camera glare and blocked sensors'], m: ['unexpected-motion events', 'recovery time after a fault', 'scrap from failed grasps'] },
+  { n: 'Energy & utilities', i: 'bolt', does: ['walks substations and plants reading gauges', 'inspects pipelines and tanks'], sim: ['rain, glare and night', 'uneven ground, stairs, blocked routes', 'rare equipment faults staged on purpose'], m: ['missed anomalies per patrol', 'false alerts per shift', 'falls per kilometre walked'] },
+  { n: 'Construction', i: 'crane', does: ['marks layout, scans progress against plans', 'hauls material around the site'], sim: ['a site that changes every day', 'trenches, edges and open floors', 'crews moving unpredictably'], m: ['tip-over and fall events', 'exclusion-zone breaches', 'map drift over a week'] },
+  { n: 'Agriculture', i: 'leaf', does: ['harvests, weeds and scouts crops', 'works rows alongside people'], sim: ['plant-to-plant variation', 'mud, slopes, animals', 'workers stepping into a row'], m: ['crop damage per hectare', 'contacts with people and animals', 'useful work per hour'] },
+  { n: 'Healthcare logistics', i: 'cross', does: ['delivers supplies through corridors and lifts', 'runs night routes between departments'], sim: ['wheelchairs, beds, children', 'crowded lobbies and doors', 'lifts that are full or out of service'], m: ['contacts per 100 person-seconds nearby', 'minutes a corridor is blocked', 'on-time delivery rate'] },
+  { n: 'Retail', i: 'cart', does: ['scans shelves, restocks, cleans floors', 'works during opening hours'], sim: ['shoppers, carts, children running', 'spills and wet floors', 'holiday-peak crowd density'], m: ['contacts and near misses per store-hour', 'aisle-blocking time', 'detection accuracy for gaps on shelves'] },
+  { n: 'Facilities & security', i: 'shield', does: ['patrols routes and reports objective events', 'checks gates, zones and walkways'], sim: ['perimeter breach, a person falling, a gate left open', 'vehicles in prohibited zones', 'staged incidents with known answers'], m: ['incidents detected (ours: 3 of 3)', 'false alerts per shift (ours: 0)', 'fidelity of incident replay'] }
+];
+let indSel = 0;
+function indRender() {
+  $('#indGrid').innerHTML = IND.map((d, i) => `<button type="button" class="tile" data-i="${i}" aria-pressed="${i === indSel}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[d.i]}</svg><span>${d.n}</span></button>`).join('');
+  const d = IND[indSel], li = a => a.map(x => `<li>${x}</li>`).join('');
+  $('#indDetail').innerHTML = `<div class="dcol"><h3>What the machine does</h3><ul>${li(d.does)}</ul></div><div class="dcol"><h3>Break it in simulation first</h3><ul>${li(d.sim)}</ul></div><div class="dcol measure"><h3>Measure, per unit of exposure</h3><ul>${li(d.m)}</ul></div>`;
+  $$('#indGrid .tile').forEach(t => t.addEventListener('click', () => { indSel = +t.dataset.i; indRender(); $('#indGrid .tile[data-i="' + indSel + '"]').focus(); }));
+}
+indRender();
+
+// ---------- federate ----------
+const FD = { cv: $('#fedCanvas'), t: 0, spokes: ['Operations', 'Field services', 'Facilities', 'Supply chain', 'Product teams', 'Partners & vendors'] };
+function fedDraw() {
+  const { ctx, w, h } = setup(FD.cv), cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.36, rHub = Math.min(w, h) * 0.15, rN = Math.min(w, h) * 0.075;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = alpha(TK.line, 1); ctx.lineWidth = 1; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  FD.spokes.forEach((name, i) => {
+    const a = -Math.PI / 2 + i * 2 * Math.PI / FD.spokes.length, nx = cx + Math.cos(a) * R, ny = cy + Math.sin(a) * R;
+    ctx.strokeStyle = TK.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * rHub, cy + Math.sin(a) * rHub); ctx.lineTo(nx - Math.cos(a) * rN, ny - Math.sin(a) * rN); ctx.stroke();
+    const L = R - rHub - rN;
+    for (let k = 0; k < 2; k++) {
+      const ph = RM ? 0.3 + k * 0.4 : ((FD.t * 0.35 + i * 0.17 + k * 0.5) % 1);
+      const d1 = rHub + ph * L; const px = cx + Math.cos(a) * d1 + Math.cos(a + Math.PI / 2) * 5, py = cy + Math.sin(a) * d1 + Math.sin(a + Math.PI / 2) * 5;
+      ctx.fillStyle = TK.hazard; ctx.fillRect(px - 4, py - 4, 8, 8);
+      const ph2 = RM ? 0.6 - k * 0.4 : ((FD.t * 0.28 + i * 0.23 + k * 0.5) % 1), d2 = rHub + (1 - ph2) * L;
+      const qx = cx + Math.cos(a) * d2 - Math.cos(a + Math.PI / 2) * 5, qy = cy + Math.sin(a) * d2 - Math.sin(a + Math.PI / 2) * 5;
+      ctx.fillStyle = TK.sensor; ctx.beginPath(); ctx.arc(qx, qy, 4, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = TK['panel-2']; ctx.strokeStyle = TK.sensor; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(nx, ny, rN, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = TK.paper; ctx.font = `600 ${Math.max(11, Math.min(14, w * 0.024))}px ${TK.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const parts = name.split(' '), half = Math.ceil(parts.length / 2), l1 = parts.slice(0, half).join(' '), l2 = parts.slice(half).join(' ');
+    const ty = ny + (Math.sin(a) >= -0.1 ? rN + 16 : -rN - 22);
+    ctx.fillText(l1, nx, ty); if (l2) ctx.fillText(l2, nx, ty + 15);
+  });
+  ctx.fillStyle = TK.hazard; ctx.beginPath(); ctx.arc(cx, cy, rHub, 0, 7); ctx.fill();
+  ctx.fillStyle = TK.ink; ctx.font = `800 ${Math.max(13, Math.min(18, w * 0.034))}px ${TK.display}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('Core team', cx, cy - 9); ctx.font = `600 ${Math.max(9, Math.min(12, rHub * 0.15))}px ${TK.mono}`; ctx.fillText('sim · eval · train', cx, cy + 12);
+}
+watch(FD.cv);
+function fedTick(dt) { if (!isVis(FD.cv) || RM) return; FD.t += dt; fedDraw(); }
+redrawers.push(fedDraw); fedDraw();
+
+// ---------- main loop ----------
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  heroTick(dt); plazaTick(dt); rwTick(dt); curveTick(dt); fedTick(dt);
+  requestAnimationFrame(frame);
+}
+heroDraw(); plazaDraw();
+requestAnimationFrame(frame);
+let rzT; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => redrawers.forEach(f => f()), 120); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => redrawers.forEach(f => f()));
+})();
+
+</script>
+<script src="race.js"></script>
+<script>if(window.RacePlayer)RacePlayer.mountAll();</script>
+</body>
+</html>
