@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<meta name="description" content="Splat Lab: one image of a cat in a purple hat, a 360-degree orbit video from a camera-height LoRA, a 44.5-degree camera seam, loop closure and a full 360-degree Gaussian splat.">
+<title>Blackforge Robot Lab: Splat Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+  "@sparkjsdev/spark":"https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.3.1/dist/spark.module.min.js"
+}}
+</script>
+<style>
+/* Tokens and base styles copied from the course page (../index.html) so the two read as one site. */
+:root{
+  --ground:#EEF1F3; --surface:#FFFFFF; --ink:#16202A; --muted:#566471; --rule:#CCD4DB;
+  --yellow:#D9A40E; --yellow-ink:#7A5600; --yellow-wash:#FBF1D2;
+  --teal:#1B7373; --teal-wash:#DDEFEE;
+  --bad:#B2432F; --good:#2E7D4F;
+  --code-bg:#E4E9ED;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0F1418; --surface:#161D23; --ink:#E4E9EE; --muted:#93A1AE; --rule:#28333C;
+    --yellow:#F2C037; --yellow-ink:#F2C037; --yellow-wash:#2A2413;
+    --teal:#5BC0BC; --teal-wash:#15292A; --bad:#E0735E; --good:#6CC08E; --code-bg:#1C252C;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0F1418; --surface:#161D23; --ink:#E4E9EE; --muted:#93A1AE; --rule:#28333C;
+  --yellow:#F2C037; --yellow-ink:#F2C037; --yellow-wash:#2A2413;
+  --teal:#5BC0BC; --teal-wash:#15292A; --bad:#E0735E; --good:#6CC08E; --code-bg:#1C252C;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.62;padding-inline:16px;margin:0}
+a{color:var(--teal);text-underline-offset:3px}
+a:focus-visible,summary:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-offset:2px;border-radius:2px}
+.frame{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:40px;padding-block:28px 80px}
+@media (min-width:1000px){.frame{grid-template-columns:230px minmax(0,1fr)}}
+.rail{display:none}
+@media (min-width:1000px){
+  .rail{display:block;position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;max-height:calc(100vh - 48px);overflow:auto;font-family:var(--display);font-size:15px;letter-spacing:.02em}
+}
+.rail h2{font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 10px;font-weight:600}
+.rail ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.rail a{display:flex;gap:10px;padding:5px 8px;border-radius:4px;color:var(--ink);text-decoration:none}
+.rail a:hover{background:var(--surface)}
+.rail .n{color:var(--yellow-ink);font-weight:700;min-width:1.4em}
+.rail .part-label{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);padding:12px 8px 2px}
+.toc-mobile{margin:0 0 8px}
+@media (min-width:1000px){.toc-mobile{display:none}}
+.toc-mobile summary{font-family:var(--display);text-transform:uppercase;letter-spacing:.12em;font-size:14px;cursor:pointer;color:var(--muted)}
+.toc-mobile ol{font-family:var(--display);font-size:16px;margin:8px 0 0;padding-left:1.4em}
+main{min-width:0}
+.col{max-width:68ch}
+header.hero{display:grid;gap:20px;margin-bottom:36px}
+.plate{font-family:var(--display);text-transform:uppercase;letter-spacing:.16em;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+.plate b{color:var(--yellow-ink);font-weight:700}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(44px,8vw,84px);line-height:.92;letter-spacing:-.005em;margin:0;text-wrap:balance;text-transform:uppercase}
+h1 span{color:var(--yellow)}
+.lede{font-size:20px;line-height:1.5;max-width:60ch;margin:0}
+.hero-media{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+@media (min-width:720px){.hero-media{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.stat{background:var(--surface);padding:12px 14px}
+.stat .v{font-family:var(--display);font-size:30px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.stat .k{font-family:var(--display);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+section.module{margin-top:64px;padding-top:20px;border-top:3px solid var(--ink)}
+.module-head{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap}
+.module-head .num{font-family:var(--display);font-size:56px;font-weight:700;line-height:1;color:var(--yellow)}
+h2.mt{font-family:var(--display);font-size:clamp(30px,4.5vw,42px);font-weight:700;text-transform:uppercase;margin:0;line-height:1.05;text-wrap:balance}
+.module-sub{color:var(--muted);margin:6px 0 0;max-width:68ch}
+article.lesson{margin-top:40px}
+.eyebrow{font-family:var(--display);text-transform:uppercase;letter-spacing:.14em;font-size:13px;color:var(--muted);margin:0 0 4px}
+h3{font-family:var(--display);font-size:28px;font-weight:600;line-height:1.1;margin:0 0 12px;text-wrap:balance}
+p{margin:0 0 14px}
+code{font-family:var(--mono);font-size:.84em;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+ul.tight,ol.tight{margin:0 0 14px;padding-left:1.2em}
+ul.tight li,ol.tight li{margin:3px 0}
+figure{margin:20px 0;display:grid;gap:8px}
+figure img,figure video{width:100%;max-width:100%;height:auto;display:block;border-radius:4px;border:1px solid var(--rule);background:#000}
+figure img{background:var(--surface)}
+figcaption{font-size:14px;color:var(--muted);line-height:1.45;max-width:80ch}
+figcaption b{color:var(--ink);font-weight:600}
+.pair{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:760px){.pair{grid-template-columns:1fr 1fr}}
+.tag{font-family:var(--display);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border-radius:3px;display:inline-block;margin-right:6px}
+.tag.bad{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.tag.good{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.learned{background:var(--yellow-wash);border-left:4px solid var(--yellow);padding:12px 16px;border-radius:0 6px 6px 0;margin:18px 0}
+.learned h4{font-family:var(--display);text-transform:uppercase;letter-spacing:.12em;font-size:13px;margin:0 0 6px;color:var(--yellow-ink)}
+.learned ul{margin:0;padding-left:1.1em}
+.learned li{margin:3px 0}
+details.agent{margin:16px 0;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+details.agent>summary{cursor:pointer;list-style:none;padding:10px 14px;font-family:var(--display);font-size:16px;letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+details.agent>summary::-webkit-details-marker{display:none}
+details.agent>summary::before{content:"";width:9px;height:9px;border-right:2px solid var(--teal);border-bottom:2px solid var(--teal);transform:rotate(-45deg);transition:transform .15s}
+details.agent[open]>summary::before{transform:rotate(45deg)}
+details.agent>summary .hint{color:var(--muted);font-size:13px;margin-left:auto;letter-spacing:.08em;text-transform:uppercase}
+.agent-body{padding:0 14px 14px;font-size:15px}
+.agent-body h5{font-family:var(--display);text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:var(--muted);margin:14px 0 6px}
+.codebox{position:relative}
+pre{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--code-bg);padding:12px 14px;border-radius:5px;overflow-x:auto;margin:0;white-space:pre}
+pre.prompt{white-space:pre-wrap;font-family:var(--body);font-size:14.5px;line-height:1.5}
+.copy{position:absolute;top:6px;right:6px;font-family:var(--display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:4px;padding:3px 8px;cursor:pointer}
+.copy:hover{border-color:var(--teal)}
+.table-wrap{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;font-size:15px;min-width:100%}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;font-size:13px;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13.5px}
+.gotchas{display:grid;grid-template-columns:1fr;gap:10px;margin:16px 0}
+@media (min-width:760px){.gotchas{grid-template-columns:1fr 1fr}}
+.gotcha{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;font-size:15px}
+.gotcha b{font-family:var(--display);font-size:17px;letter-spacing:.02em;display:block;margin-bottom:2px;font-weight:600}
+footer{margin-top:72px;padding-top:16px;border-top:1px solid var(--rule);font-size:14px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Splat Lab additions */
+.draft{font-family:var(--display);letter-spacing:.06em;font-size:15px;background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent);border-radius:6px;padding:8px 12px;margin:0}
+.crumbs{font-family:var(--display);font-size:15px;letter-spacing:.04em;display:flex;flex-wrap:wrap;gap:4px 14px}
+.paths{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:640px){.paths{grid-template-columns:1fr 1fr}}
+.paths figure{margin:0}
+.paths svg{display:block;width:100%;max-width:340px;height:auto;margin:0 auto;background:var(--surface);border:1px solid var(--rule);border-radius:6px}
+.paths .axis{stroke:var(--muted);stroke-width:1.5}
+.paths .gap{stroke:var(--bad);stroke-width:2.5;stroke-dasharray:5 4}
+.paths .first{fill:none;stroke:var(--bad);stroke-width:2.5}
+.paths .last{fill:none;stroke:var(--ink);stroke-width:2.5}
+.paths .note{fill:var(--ink);font-family:var(--display);font-size:16px;letter-spacing:.03em}
+.legend{font-size:14px;color:var(--muted);margin:6px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin:0 4px 0 10px}
+.flow{list-style:none;margin:18px 0;padding:0;display:grid;grid-template-columns:1fr;gap:22px;counter-reset:flow}
+@media (min-width:820px){.flow{grid-template-columns:repeat(4,minmax(0,1fr));gap:26px 30px}}
+.flow li{position:relative;background:var(--surface);border:1px solid var(--rule);border-top:4px solid var(--teal);border-radius:6px;padding:10px 12px;font-size:14.5px;line-height:1.45;counter-increment:flow}
+.flow li.video{border-top-color:var(--yellow)}
+.flow li b{display:block;font-family:var(--display);font-size:18px;letter-spacing:.02em;font-weight:600}
+.flow li b::before{content:counter(flow) " · ";color:var(--yellow-ink)}
+.flow li .where{display:block;font-family:var(--display);text-transform:uppercase;letter-spacing:.1em;font-size:11.5px;color:var(--muted);margin-top:6px}
+.flow li:not(:last-child)::after{content:"";position:absolute;left:50%;bottom:-17px;width:10px;height:10px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateX(-50%) rotate(45deg)}
+@media (min-width:820px){.flow li:not(:last-child)::after{left:auto;right:-21px;bottom:auto;top:50%;transform:translateY(-50%) rotate(-45deg)}.flow li:nth-child(4n)::after{display:none}}
+.viewer{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:14px;display:grid;gap:10px}
+.viewer-stage{position:relative;border-radius:4px;overflow:hidden;background:#0F1418;touch-action:none}
+.viewer-stage canvas{display:block}
+.load3d{font-family:var(--display);font-size:18px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;background:var(--teal);color:#fff;border:0;border-radius:5px;padding:10px 16px;cursor:pointer;justify-self:start}
+.load3d span{font-weight:500;opacity:.85;text-transform:none;letter-spacing:.02em}
+.load3d[disabled]{opacity:.6;cursor:progress}
+.viewer-status{font-size:14px;color:var(--muted);margin:0}
+.viewer-tools{display:flex;flex-wrap:wrap;gap:8px}
+.viewer-tools button{font-family:var(--display);font-size:13px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:4px;padding:4px 10px;cursor:pointer}
+.photo-row{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:640px){.photo-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <nav class="rail" aria-label="Sections">
+    <h2>Field manual</h2>
+    <ol>
+      <li class="part-label">Splat Lab</li>
+      <li><a href="#s1"><span class="n">1</span>One image, one orbit</a></li>
+      <li><a href="#s2"><span class="n">2</span>The 45° problem</a></li>
+      <li><a href="#s3"><span class="n">3</span>A height ladder</a></li>
+      <li><a href="#s4"><span class="n">4</span>A 44.5° seam</a></li>
+      <li><a href="#s5"><span class="n">5</span>Closing the loop</a></li>
+      <li><a href="#s6"><span class="n">6</span>The splat</a></li>
+      <li><a href="#s7"><span class="n">7</span>The pipeline</a></li>
+      <li><a href="#s8"><span class="n">8</span>Honest limits</a></li>
+      <li class="part-label">Elsewhere</li>
+      <li><a href="../"><span class="n">←</span>Patrol Lab course</a></li>
+      <li><a href="../talk/"><span class="n">←</span>The talk</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <div class="crumbs"><a href="../">← Patrol Lab course</a><a href="../talk/">The talk</a></div>
+      <div class="plate"><span>Course log · Side quest</span><span><b>Splat Lab</b> · 2026-09-26 → 09-30</span><span>MiniMax-H3 · Blender · Spirula Studio · COLMAP</span></div>
+      <h1>One cat image,<br><span>one 3D splat</span></h1>
+      <p class="lede">A image of a white cat in a purple hat goes in. A video model with a camera LoRA walks a camera all the way round it, and that video becomes a 3D Gaussian splat you can turn in your browser. Two numbers that were both about 45° nearly sank it: an orbit LoRA that always filmed from the height of its reference pictures, and a reconstruction whose last camera ended up 44.5° away from its first.</p>
+      <details class="toc-mobile"><summary>Sections</summary>
+        <ol><li><a href="#s1">One image, one orbit</a></li><li><a href="#s2">The 45° problem</a></li><li><a href="#s3">A height ladder</a></li><li><a href="#s4">A 44.5° seam</a></li><li><a href="#s5">Closing the loop</a></li><li><a href="#s6">The splat</a></li><li><a href="#s7">The pipeline</a></li><li><a href="#s8">Honest limits</a></li></ol>
+      </details>
+      <div class="hero-media">
+        <figure style="margin:0">
+          <video src="media/cat-orbit-1500.mp4" poster="media/cat-orbit-1500.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Generated video: the camera circles the white cat in the purple hat on a snowy ridge and returns to the start"></video>
+          <figcaption><b>The orbit we splatted:</b> 124 generated frames from one image, 1024×768 at 24 fps.</figcaption>
+        </figure>
+        <div class="stats" role="list">
+          <div class="stat" role="listitem"><div class="v">1 → 124</div><div class="k">Image in, orbit frames out</div></div>
+          <div class="stat" role="listitem"><div class="v">0/4 → 3/4</div><div class="k">Cross-height tests passed, old LoRA → step 1500</div></div>
+          <div class="stat" role="listitem"><div class="v">44.5°</div><div class="k">First vs last solved camera, for near-identical frames</div></div>
+          <div class="stat" role="listitem"><div class="v">316.6° → 360°</div><div class="k">Camera sweep, before → after loop closure</div></div>
+          <div class="stat" role="listitem"><div class="v">24.7 → 25.1 dB</div><div class="k">PSNR on 15 held-out frames</div></div>
+          <div class="stat" role="listitem"><div class="v">256,651</div><div class="k">Gaussians, 7,000 steps, 39 s</div></div>
+        </div>
+      </div>
+    </header>
+
+<!-- ===================== 1 ===================== -->
+    <section class="module" id="s1">
+      <div class="module-head"><span class="num">1</span><h2 class="mt">One image, one orbit</h2></div>
+      <p class="module-sub">Turning a single still into the 360° video a splat needs, with a LoRA trained only on Blender renders.</p>
+      <article class="lesson col">
+        <p class="eyebrow">Lesson 1.1</p>
+        <h3>A camera move is a learnable effect</h3>
+        <p>MiniMax-H3's reference-to-video mode (Ref2VA) takes up to a few reference pictures and a caption and writes a video with sound. ORB360 is a rank-32 LoRA for it that teaches one camera move: a clockwise orbit at a constant distance that ends exactly where it began, with the subject frozen. Every training clip was rendered in Blender, so the camera's true position is known for every frame. That's what makes the orbit measurable later.</p>
+        <div class="photo-row">
+          <figure style="margin:0"><img src="media/cat-photo.jpg" width="1024" height="768" loading="lazy" alt="A fluffy white cat in a purple felt hat sitting on a snowy rock, pine trees and mountains at sunset behind it"><figcaption><b>The input:</b> one image, used as Picture 1. Frame 0 and frame 123 should both look like it.</figcaption></figure>
+          <figure style="margin:0"><img src="media/first-last.jpg" width="1280" height="480" loading="lazy" alt="First and last generated frames side by side, almost identical"><figcaption><b>Frames 1 and 124</b> of the generated orbit. They're nearly identical (foreground PSNR 30.8 dB, mask overlap 0.994). Hold on to that.</figcaption></figure>
+        </div>
+        <p>The orbit LoRA never saw a real-looking image or a real scene in training, yet it kept the ridge, the pines and the sky all the way round. It did one thing the caption didn't ask for: this orbit is at the image's own height, roughly eye level. Getting the camera to go <i>higher or lower</i> than the image is the next two sections.</p>
+        <details class="agent"><summary>Reproduce with a coding agent<span class="hint">generate the orbit</span></summary><div class="agent-body">
+          <div class="codebox"><pre># musubi-tuner (kohya-ss) v0.3.5+, MiniMax-H3 Ref2VA weights, LoRA from huggingface.co/MATLOWAI/MiniMax-H3-ORB360-CardSpin
+python src/musubi_tuner/minimax_h3_generate_video.py --task ref2va \
+  --dit minimax_h3_ref2va_bf16.safetensors --prune_adaln \
+  --video_vae minimax_h3_video_vae_fp16.safetensors --audio_vae minimax_h3_audio_vae_fp32.safetensors \
+  --text_encoder qwen3vl_32b_minimax_h3_int8_convrot.safetensors --text_encoder_attn_mode sdpa \
+  --lora_weight minimax_h3_orb360_step1500.safetensors --lora_multiplier 1.0 --lora_runtime_attach \
+  --video_size 768 1024 --video_length 124 --infer_steps 20 --attn_mode sdpa --seed 20260926 \
+  --prompt "$(cat prompts/orbit_realscene_caption.txt)" --ref photo.png --save_path out/</pre><button class="copy" type="button">Copy</button></div>
+          <h5>Agent prompt</h5>
+          <div class="codebox"><pre class="prompt">Generate one 124-frame, 24 fps orbit with the ORB360 step-1500 LoRA from a single reference image, using the model card's real-scene orbit caption unchanged. Keep the raw MP4, the exact command, the seed and the LoRA hash next to it. Before using it for 3D, check by eye that it completes one turn, shows the back, never reverses, and that the last frame matches the first.</pre><button class="copy" type="button">Copy</button></div>
+        </div></details>
+      </article>
+    </section>
+
+<!-- ===================== 2 ===================== -->
+    <section class="module" id="s2">
+      <div class="module-head"><span class="num">2</span><h2 class="mt">The 45° problem</h2></div>
+      <p class="module-sub">The first orbit LoRA had a perfect-looking test record. It was copying the pictures.</p>
+      <article class="lesson col">
+        <p class="eyebrow">Lesson 2.1</p>
+        <h3>Show it pictures from above, ask for eye level</h3>
+        <p>For a splat you want views from several heights, including from below. So the test gave the first LoRA (750 steps on four 512×512 orbits) three pictures of a stone cat statue rendered from 45° above, and a caption asking for an orbit at 5°, near eye level. The statue is a free Poly Haven scan that was never in training, and Blender rendered the true 5° orbit to compare against.</p>
+        <figure><img src="media/height-refs.jpg" width="960" height="320" loading="lazy" alt="Three renders of a stone cat statue seen from 45 degrees above, at 0, 120 and 240 degrees around it"><figcaption><b>The reference pictures,</b> all from 45° above, at 0°, 120° and 240° round the statue.</figcaption></figure>
+        <figure>
+          <video src="media/height-45-vs-5.mp4" poster="media/height-45-vs-5.jpg" controls muted loop playsinline preload="metadata" aria-label="Three orbits side by side: Blender at 5 degrees, the old LoRA looking down from 45 degrees, step 1500 near eye level"></video>
+          <figcaption><span class="tag bad">Old LoRA: 45°</span><span class="tag good">Step 1500: ~0–10°</span><b>Same pictures, same caption, same seed.</b> Left, the Blender truth at 5°. Middle, the old LoRA: a clean single turn, looking down from 45° on all 124 frames. Right, the height-ladder LoRA from section 3.</figcaption>
+        </figure>
+        <p>It wasn't a one-off. In all four tests where the pictures came from 45° and the caption asked for something else (5° on three held-out objects, −30° on one), the old LoRA orbited at 45°. Its orbits were otherwise excellent: one turn, tight pacing, the right start view. It had been trained on four orbits, each with pictures taken from that same orbit, so "film from wherever the pictures were taken" had always been the right answer.</p>
+        <div class="learned"><h4>What we learned</h4><ul>
+          <li>The old LoRA also passed the "orbit from 30° below" test, because its pictures were taken from 30° below. A test where copying the input gives the right answer can't tell copying from following the caption.</li>
+          <li>Only cross-height tests (pictures from one height, orbit asked at another) measure whether the camera follows the caption.</li>
+        </ul></div>
+      </article>
+    </section>
+
+<!-- ===================== 3 ===================== -->
+    <section class="module" id="s3">
+      <div class="module-head"><span class="num">3</span><h2 class="mt">A height ladder</h2></div>
+      <p class="module-sub">Training camera height on purpose, including from underneath through a floor that isn't there.</p>
+      <article class="lesson col">
+        <p class="eyebrow">Lesson 3.1</p>
+        <h3>Render every height, and say it in the caption</h3>
+        <p>The fix was data. 23 objects (Poly Haven CC0 props and a few stylised character models) were rendered in Blender as 345 one-turn orbits at three lengths, each at the largest size that fit in 96 GB: 124 frames at 800×800, 73 at 1024×1024 and 22 at 1600×1600. Camera heights ran from 45° below the subject's centre to 55° above. While planning it, the question came up: <i>what about negative angles, looking up through a transparent floor? Think getting angles for splat.</i> So every orbit below the centre was rendered with the floor switched off.</p>
+        <ul class="tight">
+          <li>Each clip appears in three training rows with different reference layouts (front only, front and back, a turnaround, thirds), and one of the three uses pictures rendered from a different height than the orbit.</li>
+          <li>Captions give the height in words and numbers ("a low camera below the subject, looking up, 30 degrees below the subject's centre") and label every picture with its time, frame and angle.</li>
+          <li>960 rows, 1,500 steps of rank-32 LoRA training, about 62 s per step (about 26 hours) on one 96 GB GPU.</li>
+        </ul>
+        <p>Every checkpoint was scored on the same held-out tests. A tracker matched each generated frame to Blender renders of the true orbit at a grid of heights, which gives a height and an angle per frame, good to about ±5–7° in height. One seed per test.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Pictures from 45°, orbit asked at…</th><th class="num">Old 512²</th><th class="num">Step 250</th><th class="num">Step 500</th><th class="num">Step 1250</th><th class="num">Step 1500</th></tr></thead>
+          <tbody>
+            <tr><td>5°, stone cat statue</td><td class="num">45°</td><td class="num">0°, 2 turns</td><td class="num">0°, 2 turns</td><td class="num">0°, 2 turns</td><td class="num"><b>0–10°, 1 turn</b></td></tr>
+            <tr><td>5°, vintage film camera</td><td class="num">45°</td><td class="num">20°</td><td class="num">10°</td><td class="num">5°</td><td class="num"><b>5°</b></td></tr>
+            <tr><td>5°, stylised character</td><td class="num">45°</td><td class="num">45°</td><td class="num">5°</td><td class="num">5°</td><td class="num"><b>0–5°</b></td></tr>
+            <tr><td>−30°, vintage film camera <i>(the splat case)</i></td><td class="num">45°</td><td class="num">45°</td><td class="num">10°</td><td class="num">10°</td><td class="num"><span class="tag bad">Fails</span>20°</td></tr>
+          </tbody>
+        </table></div>
+        <p>Median measured height per clip. Step 1500 is the first checkpoint that put the statue at the right height <i>and</i> went round once: every earlier ladder checkpoint got the height right and then orbited twice.</p>
+        <div class="pair">
+          <figure><video src="media/two-turns-1250.mp4" poster="media/two-turns-1250.jpg" controls muted loop playsinline preload="metadata" aria-label="Blender orbit beside step 1250, which spins round the statue twice in the same time"></video><figcaption><span class="tag bad">2 turns</span><b>Step 1250:</b> right height, but 726° of rotation in a clip meant to hold 360°.</figcaption></figure>
+          <figure><video src="media/splat-case-fail.mp4" poster="media/splat-case-fail.jpg" controls muted loop playsinline preload="metadata" aria-label="Blender orbit from 30 degrees below beside step 1500, which shows the camera from above and tumbles"></video><figcaption><span class="tag bad">Unsolved</span><b>Pictures from 45° above, orbit asked at 30° below.</b> Blender looks up at the camera's underside; step 1500 drifts back toward the pictures' height and tumbles.</figcaption></figure>
+        </div>
+        <p>Two more failures matter for splats. Changing height <i>during</i> one clip (45° above down to 30° below) made the object tumble instead of the camera moving. And on a real (non-Blender) image, height prompts did nothing yet: the cat asked for an orbit 35° above and 20° below came out at the image's own height both times, on two seeds each. Of the 345 training clips, only 109 had straight-on cross-height pictures with a higher orbit, and none had straight-on pictures with an orbit from below.</p>
+        <figure><img src="media/real-photo-heights.jpg" width="1280" height="384" loading="lazy" alt="Two rows of frames from the cat orbit prompted high and prompted low; both rows are at the same eye-level height"><figcaption><span class="tag bad">No effect</span><b>Step 1500 on the cat image, seed 20260926.</b> Top: prompted 35° above. Bottom: prompted 20° below. Practically the same video.</figcaption></figure>
+        <div class="learned"><h4>What we learned</h4><ul>
+          <li>Step 1500 follows the caption's height on studio renders from about 30° below to 45° above, and for gaps of about 40° between the pictures' height and the orbit's. A 75° gap still fails.</li>
+          <li>A held-out test on rendered objects is not a real-looking image. The cat that went to the splat was an ordinary eye-level orbit.</li>
+          <li>Count what the training pairs actually cover. The cross-height rule picked "the height farthest from the orbit", which almost never produced the case real photos need: a straight-on picture and an orbit from below.</li>
+        </ul></div>
+      </article>
+    </section>
+
+<!-- ===================== 4 ===================== -->
+    <section class="module" id="s4">
+      <div class="module-head"><span class="num">4</span><h2 class="mt">A 44.5° seam</h2></div>
+      <p class="module-sub">On a second machine, structure-from-motion found every frame and still got the orbit wrong.</p>
+      <article class="lesson col">
+        <p class="eyebrow">Lesson 4.1</p>
+        <h3>Registering every frame isn't the same as recovering the orbit</h3>
+        <p>The 124 frames went to a desktop with two RTX 5090s and the stock tools: Spirula Studio for structure-from-motion and splat training, and COLMAP as a cross-check. A generated orbit has no camera data, so every camera pose has to be solved from the pixels.</p>
+        <ul class="tight">
+          <li><b>Full frames, Spirula:</b> 124 of 124 frames registered, yet the path covered only 94° and reversed direction 34 times. COLMAP's incremental solver on full frames kept collapsing.</li>
+          <li><b>Masked to the cat:</b> Spirula's built-in SAM 2.1 tracker cut out the cat and hat. With separate horizontal and vertical focal lengths, the path jumped 107° between neighbouring frames.</li>
+          <li><b>Masked, one shared focal length:</b> the smoothest solution. 124 of 124 frames, no reversals, the largest step between frames 4.52°, but only <b>316.6° of sweep</b>.</li>
+        </ul>
+        <p>The first and last frames are nearly the same picture, so their cameras should nearly coincide. Instead their solved orientations differ by <b>44.51°</b>, their centres sit 0.67 units apart on an orbit of radius about 0.9, and the two frames share just <b>3</b> reconstructed 3D points out of about 430 tracked in each. Orbiting the finished splat by hand, Dylan saw it as the cat's pose jumping where the orbit wraps round.</p>
+        <div class="paths">
+          <figure><svg viewBox="0 0 340 360" role="img" aria-label="Camera centres before loop closure"><title>Camera centres before loop closure</title>
+<line x1="170" y1="162" x2="170" y2="178" class="axis"/><line x1="162" y1="170" x2="178" y2="170" class="axis"/>
+<circle cx="170.0" cy="301.2" r="3.2" fill="#1b7373"/>
+<circle cx="166.0" cy="300.4" r="3.2" fill="#1d7372"/>
+<circle cx="162.4" cy="299.5" r="3.2" fill="#1e7471"/>
+<circle cx="158.9" cy="298.4" r="3.2" fill="#207471"/>
+<circle cx="154.9" cy="297.1" r="3.2" fill="#217570"/>
+<circle cx="150.7" cy="295.8" r="3.2" fill="#23756f"/>
+<circle cx="147.6" cy="294.6" r="3.2" fill="#24756e"/>
+<circle cx="144.2" cy="293.2" r="3.2" fill="#26766d"/>
+<circle cx="140.5" cy="291.6" r="3.2" fill="#27766c"/>
+<circle cx="136.9" cy="289.8" r="3.2" fill="#29776c"/>
+<circle cx="133.4" cy="288.0" r="3.2" fill="#2a776b"/>
+<circle cx="130.2" cy="286.1" r="3.2" fill="#2c776a"/>
+<circle cx="126.5" cy="284.0" r="3.2" fill="#2e7869"/>
+<circle cx="122.8" cy="281.8" r="3.2" fill="#2f7868"/>
+<circle cx="119.6" cy="279.7" r="3.2" fill="#317968"/>
+<circle cx="116.8" cy="277.4" r="3.2" fill="#327967"/>
+<circle cx="113.8" cy="274.9" r="3.2" fill="#347966"/>
+<circle cx="110.3" cy="272.3" r="3.2" fill="#357a65"/>
+<circle cx="106.5" cy="269.0" r="3.2" fill="#377a64"/>
+<circle cx="103.8" cy="266.5" r="3.2" fill="#387b63"/>
+<circle cx="101.1" cy="263.9" r="3.2" fill="#3a7b63"/>
+<circle cx="98.7" cy="261.1" r="3.2" fill="#3b7b62"/>
+<circle cx="95.8" cy="257.9" r="3.2" fill="#3d7c61"/>
+<circle cx="93.4" cy="255.2" r="3.2" fill="#3f7c60"/>
+<circle cx="90.9" cy="252.1" r="3.2" fill="#407d5f"/>
+<circle cx="88.3" cy="248.7" r="3.2" fill="#427d5e"/>
+<circle cx="85.6" cy="244.9" r="3.2" fill="#437d5e"/>
+<circle cx="83.3" cy="241.4" r="3.2" fill="#457e5d"/>
+<circle cx="81.0" cy="237.7" r="3.2" fill="#467e5c"/>
+<circle cx="78.8" cy="233.8" r="3.2" fill="#487f5b"/>
+<circle cx="76.4" cy="229.7" r="3.2" fill="#497f5a"/>
+<circle cx="74.5" cy="225.7" r="3.2" fill="#4b7f5a"/>
+<circle cx="72.8" cy="221.8" r="3.2" fill="#4c8059"/>
+<circle cx="71.3" cy="217.7" r="3.2" fill="#4e8058"/>
+<circle cx="69.5" cy="213.2" r="3.2" fill="#508157"/>
+<circle cx="68.0" cy="208.8" r="3.2" fill="#518156"/>
+<circle cx="66.7" cy="204.1" r="3.2" fill="#538155"/>
+<circle cx="65.7" cy="200.0" r="3.2" fill="#548255"/>
+<circle cx="64.8" cy="195.5" r="3.2" fill="#568254"/>
+<circle cx="63.8" cy="191.0" r="3.2" fill="#578353"/>
+<circle cx="63.2" cy="186.2" r="3.2" fill="#598352"/>
+<circle cx="62.7" cy="181.7" r="3.2" fill="#5a8351"/>
+<circle cx="62.3" cy="177.4" r="3.2" fill="#5c8451"/>
+<circle cx="62.2" cy="171.9" r="3.2" fill="#5d8450"/>
+<circle cx="62.2" cy="167.2" r="3.2" fill="#5f854f"/>
+<circle cx="62.2" cy="162.6" r="3.2" fill="#61854e"/>
+<circle cx="62.6" cy="157.8" r="3.2" fill="#62854d"/>
+<circle cx="63.1" cy="152.3" r="3.2" fill="#64864c"/>
+<circle cx="63.9" cy="147.3" r="3.2" fill="#65864c"/>
+<circle cx="64.9" cy="141.9" r="3.2" fill="#67874b"/>
+<circle cx="66.0" cy="136.8" r="3.2" fill="#68874a"/>
+<circle cx="67.6" cy="131.3" r="3.2" fill="#6a8749"/>
+<circle cx="69.2" cy="126.1" r="3.2" fill="#6b8848"/>
+<circle cx="71.1" cy="120.8" r="3.2" fill="#6d8847"/>
+<circle cx="73.3" cy="115.6" r="3.2" fill="#6e8947"/>
+<circle cx="75.7" cy="110.4" r="3.2" fill="#708946"/>
+<circle cx="78.4" cy="105.1" r="3.2" fill="#728945"/>
+<circle cx="81.6" cy="100.0" r="3.2" fill="#738a44"/>
+<circle cx="84.5" cy="95.4" r="3.2" fill="#758a43"/>
+<circle cx="88.0" cy="90.7" r="3.2" fill="#768b43"/>
+<circle cx="91.5" cy="86.1" r="3.2" fill="#788b42"/>
+<circle cx="96.1" cy="81.2" r="3.2" fill="#798b41"/>
+<circle cx="100.1" cy="77.1" r="3.2" fill="#7b8c40"/>
+<circle cx="103.8" cy="73.2" r="3.2" fill="#7c8c3f"/>
+<circle cx="108.3" cy="69.6" r="3.2" fill="#7e8c3e"/>
+<circle cx="112.9" cy="66.1" r="3.2" fill="#7f8d3e"/>
+<circle cx="117.4" cy="62.7" r="3.2" fill="#818d3d"/>
+<circle cx="122.4" cy="59.8" r="3.2" fill="#828e3c"/>
+<circle cx="127.0" cy="56.8" r="3.2" fill="#848e3b"/>
+<circle cx="132.1" cy="53.1" r="3.2" fill="#868e3a"/>
+<circle cx="137.8" cy="49.6" r="3.2" fill="#878f3a"/>
+<circle cx="143.9" cy="47.5" r="3.2" fill="#898f39"/>
+<circle cx="149.9" cy="45.3" r="3.2" fill="#8a9038"/>
+<circle cx="157.0" cy="42.9" r="3.2" fill="#8c9037"/>
+<circle cx="163.1" cy="41.5" r="3.2" fill="#8d9036"/>
+<circle cx="169.1" cy="40.1" r="3.2" fill="#8f9135"/>
+<circle cx="175.9" cy="39.0" r="3.2" fill="#909135"/>
+<circle cx="183.3" cy="38.1" r="3.2" fill="#929234"/>
+<circle cx="190.1" cy="37.5" r="3.2" fill="#939233"/>
+<circle cx="197.8" cy="37.5" r="3.2" fill="#959232"/>
+<circle cx="205.3" cy="38.0" r="3.2" fill="#979331"/>
+<circle cx="213.2" cy="38.8" r="3.2" fill="#989330"/>
+<circle cx="222.4" cy="40.3" r="3.2" fill="#9a9430"/>
+<circle cx="229.7" cy="42.0" r="3.2" fill="#9b942f"/>
+<circle cx="237.4" cy="44.5" r="3.2" fill="#9d942e"/>
+<circle cx="245.0" cy="47.7" r="3.2" fill="#9e952d"/>
+<circle cx="253.4" cy="51.8" r="3.2" fill="#a0952c"/>
+<circle cx="260.3" cy="55.6" r="3.2" fill="#a1962c"/>
+<circle cx="267.3" cy="60.1" r="3.2" fill="#a3962b"/>
+<circle cx="274.2" cy="65.5" r="3.2" fill="#a4962a"/>
+<circle cx="281.8" cy="72.7" r="3.2" fill="#a69729"/>
+<circle cx="288.2" cy="79.5" r="3.2" fill="#a89728"/>
+<circle cx="292.9" cy="85.0" r="3.2" fill="#a99827"/>
+<circle cx="297.8" cy="92.0" r="3.2" fill="#ab9827"/>
+<circle cx="302.8" cy="99.9" r="3.2" fill="#ac9826"/>
+<circle cx="307.0" cy="107.7" r="3.2" fill="#ae9925"/>
+<circle cx="310.4" cy="115.1" r="3.2" fill="#af9924"/>
+<circle cx="313.4" cy="123.4" r="3.2" fill="#b19a23"/>
+<circle cx="316.0" cy="132.6" r="3.2" fill="#b29a23"/>
+<circle cx="317.9" cy="142.0" r="3.2" fill="#b49a22"/>
+<circle cx="319.1" cy="150.1" r="3.2" fill="#b59b21"/>
+<circle cx="319.9" cy="157.6" r="3.2" fill="#b79b20"/>
+<circle cx="320.0" cy="166.3" r="3.2" fill="#b99c1f"/>
+<circle cx="319.6" cy="174.4" r="3.2" fill="#ba9c1e"/>
+<circle cx="318.8" cy="181.5" r="3.2" fill="#bc9c1e"/>
+<circle cx="317.9" cy="187.8" r="3.2" fill="#bd9d1d"/>
+<circle cx="316.5" cy="195.0" r="3.2" fill="#bf9d1c"/>
+<circle cx="314.6" cy="201.6" r="3.2" fill="#c09e1b"/>
+<circle cx="312.6" cy="207.8" r="3.2" fill="#c29e1a"/>
+<circle cx="310.2" cy="213.7" r="3.2" fill="#c39e19"/>
+<circle cx="307.9" cy="219.2" r="3.2" fill="#c59f19"/>
+<circle cx="305.1" cy="224.6" r="3.2" fill="#c69f18"/>
+<circle cx="302.2" cy="229.9" r="3.2" fill="#c8a017"/>
+<circle cx="298.9" cy="234.9" r="3.2" fill="#caa016"/>
+<circle cx="295.8" cy="239.6" r="3.2" fill="#cba015"/>
+<circle cx="292.3" cy="244.4" r="3.2" fill="#cda115"/>
+<circle cx="288.6" cy="248.7" r="3.2" fill="#cea114"/>
+<circle cx="285.0" cy="252.5" r="3.2" fill="#d0a213"/>
+<circle cx="281.2" cy="256.2" r="3.2" fill="#d1a212"/>
+<circle cx="277.3" cy="259.9" r="3.2" fill="#d3a211"/>
+<circle cx="273.2" cy="263.6" r="3.2" fill="#d4a310"/>
+<circle cx="269.2" cy="266.5" r="3.2" fill="#d6a310"/>
+<circle cx="265.5" cy="269.3" r="3.2" fill="#d7a40f"/>
+<circle cx="261.8" cy="271.7" r="3.2" fill="#d9a40e"/>
+<line x1="170.0" y1="301.2" x2="261.8" y2="271.7" class="gap"/>
+<circle cx="170.0" cy="301.2" r="7" class="first"/>
+<path d="M255.8,265.7l12,12m0,-12l-12,12" class="last"/>
+<text x="170" y="350" text-anchor="middle" class="note">316.6° of the orbit recovered</text></svg><figcaption><span class="tag bad">Open</span><b>Solved camera centres,</b> seen from above the orbit plane. The ring stops short; the dashed line is the seam between frame 1 (circle) and frame 124 (cross).</figcaption></figure>
+          <figure><svg viewBox="0 0 340 360" role="img" aria-label="Camera centres after loop closure"><title>Camera centres after loop closure</title>
+<line x1="170" y1="162" x2="170" y2="178" class="axis"/><line x1="162" y1="170" x2="178" y2="170" class="axis"/>
+<circle cx="170.0" cy="289.0" r="3.2" fill="#1b7373"/>
+<circle cx="165.2" cy="288.2" r="3.2" fill="#1d7372"/>
+<circle cx="160.8" cy="287.2" r="3.2" fill="#1e7471"/>
+<circle cx="156.4" cy="286.0" r="3.2" fill="#207471"/>
+<circle cx="151.6" cy="284.6" r="3.2" fill="#217570"/>
+<circle cx="146.6" cy="283.0" r="3.2" fill="#23756f"/>
+<circle cx="142.7" cy="281.6" r="3.2" fill="#24756e"/>
+<circle cx="138.5" cy="279.9" r="3.2" fill="#26766d"/>
+<circle cx="134.1" cy="277.9" r="3.2" fill="#27766c"/>
+<circle cx="129.8" cy="275.7" r="3.2" fill="#29776c"/>
+<circle cx="125.6" cy="273.5" r="3.2" fill="#2a776b"/>
+<circle cx="121.8" cy="271.2" r="3.2" fill="#2c776a"/>
+<circle cx="117.5" cy="268.5" r="3.2" fill="#2e7869"/>
+<circle cx="113.2" cy="265.7" r="3.2" fill="#2f7868"/>
+<circle cx="109.5" cy="263.0" r="3.2" fill="#317968"/>
+<circle cx="106.2" cy="260.0" r="3.2" fill="#327967"/>
+<circle cx="102.7" cy="256.9" r="3.2" fill="#347966"/>
+<circle cx="98.9" cy="253.5" r="3.2" fill="#357a65"/>
+<circle cx="94.8" cy="249.4" r="3.2" fill="#377a64"/>
+<circle cx="91.8" cy="246.1" r="3.2" fill="#387b63"/>
+<circle cx="88.9" cy="242.8" r="3.2" fill="#3a7b63"/>
+<circle cx="86.2" cy="239.2" r="3.2" fill="#3b7b62"/>
+<circle cx="83.2" cy="235.1" r="3.2" fill="#3d7c61"/>
+<circle cx="80.7" cy="231.4" r="3.2" fill="#3f7c60"/>
+<circle cx="78.2" cy="227.5" r="3.2" fill="#407d5f"/>
+<circle cx="75.6" cy="223.1" r="3.2" fill="#427d5e"/>
+<circle cx="73.1" cy="218.4" r="3.2" fill="#437d5e"/>
+<circle cx="70.9" cy="214.0" r="3.2" fill="#457e5d"/>
+<circle cx="68.9" cy="209.3" r="3.2" fill="#467e5c"/>
+<circle cx="67.0" cy="204.3" r="3.2" fill="#487f5b"/>
+<circle cx="65.1" cy="199.2" r="3.2" fill="#497f5a"/>
+<circle cx="63.6" cy="194.3" r="3.2" fill="#4b7f5a"/>
+<circle cx="62.4" cy="189.4" r="3.2" fill="#4c8059"/>
+<circle cx="61.4" cy="184.4" r="3.2" fill="#4e8058"/>
+<circle cx="60.4" cy="179.0" r="3.2" fill="#508157"/>
+<circle cx="59.7" cy="173.6" r="3.2" fill="#518156"/>
+<circle cx="59.3" cy="168.0" r="3.2" fill="#538155"/>
+<circle cx="59.0" cy="163.0" r="3.2" fill="#548255"/>
+<circle cx="59.1" cy="157.8" r="3.2" fill="#568254"/>
+<circle cx="59.1" cy="152.3" r="3.2" fill="#578353"/>
+<circle cx="59.6" cy="146.8" r="3.2" fill="#598352"/>
+<circle cx="60.2" cy="141.6" r="3.2" fill="#5a8351"/>
+<circle cx="61.0" cy="136.6" r="3.2" fill="#5c8451"/>
+<circle cx="62.3" cy="130.5" r="3.2" fill="#5d8450"/>
+<circle cx="63.7" cy="125.2" r="3.2" fill="#5f854f"/>
+<circle cx="65.1" cy="120.1" r="3.2" fill="#61854e"/>
+<circle cx="66.9" cy="114.9" r="3.2" fill="#62854d"/>
+<circle cx="69.1" cy="109.1" r="3.2" fill="#64864c"/>
+<circle cx="71.6" cy="103.7" r="3.2" fill="#65864c"/>
+<circle cx="74.4" cy="98.2" r="3.2" fill="#67874b"/>
+<circle cx="77.3" cy="93.0" r="3.2" fill="#68874a"/>
+<circle cx="80.8" cy="87.5" r="3.2" fill="#6a8749"/>
+<circle cx="84.3" cy="82.4" r="3.2" fill="#6b8848"/>
+<circle cx="88.2" cy="77.4" r="3.2" fill="#6d8847"/>
+<circle cx="92.3" cy="72.5" r="3.2" fill="#6e8947"/>
+<circle cx="96.8" cy="67.9" r="3.2" fill="#708946"/>
+<circle cx="101.7" cy="63.2" r="3.2" fill="#728945"/>
+<circle cx="106.9" cy="58.9" r="3.2" fill="#738a44"/>
+<circle cx="111.8" cy="55.2" r="3.2" fill="#758a43"/>
+<circle cx="117.3" cy="51.5" r="3.2" fill="#768b43"/>
+<circle cx="122.8" cy="48.0" r="3.2" fill="#788b42"/>
+<circle cx="129.5" cy="44.6" r="3.2" fill="#798b41"/>
+<circle cx="135.4" cy="41.9" r="3.2" fill="#7b8c40"/>
+<circle cx="141.1" cy="39.3" r="3.2" fill="#7c8c3f"/>
+<circle cx="147.3" cy="37.4" r="3.2" fill="#7e8c3e"/>
+<circle cx="153.6" cy="35.6" r="3.2" fill="#7f8d3e"/>
+<circle cx="159.8" cy="34.1" r="3.2" fill="#818d3d"/>
+<circle cx="166.2" cy="33.2" r="3.2" fill="#828e3c"/>
+<circle cx="172.5" cy="32.1" r="3.2" fill="#848e3b"/>
+<circle cx="179.3" cy="30.7" r="3.2" fill="#868e3a"/>
+<circle cx="186.8" cy="29.8" r="3.2" fill="#878f3a"/>
+<circle cx="194.0" cy="30.4" r="3.2" fill="#898f39"/>
+<circle cx="201.1" cy="30.9" r="3.2" fill="#8a9038"/>
+<circle cx="209.5" cy="31.9" r="3.2" fill="#8c9037"/>
+<circle cx="216.4" cy="33.3" r="3.2" fill="#8d9036"/>
+<circle cx="223.1" cy="34.9" r="3.2" fill="#8f9135"/>
+<circle cx="230.5" cy="37.1" r="3.2" fill="#909135"/>
+<circle cx="238.3" cy="39.9" r="3.2" fill="#929234"/>
+<circle cx="245.5" cy="42.7" r="3.2" fill="#939233"/>
+<circle cx="253.0" cy="46.5" r="3.2" fill="#959232"/>
+<circle cx="260.2" cy="50.9" r="3.2" fill="#979331"/>
+<circle cx="267.6" cy="55.8" r="3.2" fill="#989330"/>
+<circle cx="275.8" cy="61.9" r="3.2" fill="#9a9430"/>
+<circle cx="282.1" cy="67.5" r="3.2" fill="#9b942f"/>
+<circle cx="288.3" cy="74.0" r="3.2" fill="#9d942e"/>
+<circle cx="294.0" cy="81.1" r="3.2" fill="#9e952d"/>
+<circle cx="299.9" cy="89.4" r="3.2" fill="#a0952c"/>
+<circle cx="304.6" cy="97.0" r="3.2" fill="#a1962c"/>
+<circle cx="308.8" cy="105.1" r="3.2" fill="#a3962b"/>
+<circle cx="312.4" cy="114.1" r="3.2" fill="#a4962a"/>
+<circle cx="315.7" cy="125.0" r="3.2" fill="#a69729"/>
+<circle cx="318.0" cy="134.9" r="3.2" fill="#a89728"/>
+<circle cx="319.3" cy="143.0" r="3.2" fill="#a99827"/>
+<circle cx="319.9" cy="152.5" r="3.2" fill="#ab9827"/>
+<circle cx="320.0" cy="162.8" r="3.2" fill="#ac9826"/>
+<circle cx="319.4" cy="172.5" r="3.2" fill="#ae9925"/>
+<circle cx="318.2" cy="181.5" r="3.2" fill="#af9924"/>
+<circle cx="316.0" cy="191.0" r="3.2" fill="#b19a23"/>
+<circle cx="312.9" cy="201.0" r="3.2" fill="#b29a23"/>
+<circle cx="309.0" cy="210.8" r="3.2" fill="#b49a22"/>
+<circle cx="305.2" cy="219.0" r="3.2" fill="#b59b21"/>
+<circle cx="301.1" cy="226.5" r="3.2" fill="#b79b20"/>
+<circle cx="295.8" cy="234.5" r="3.2" fill="#b99c1f"/>
+<circle cx="290.3" cy="241.7" r="3.2" fill="#ba9c1e"/>
+<circle cx="285.0" cy="247.7" r="3.2" fill="#bc9c1e"/>
+<circle cx="280.0" cy="253.1" r="3.2" fill="#bd9d1d"/>
+<circle cx="274.0" cy="258.7" r="3.2" fill="#bf9d1c"/>
+<circle cx="268.0" cy="263.5" r="3.2" fill="#c09e1b"/>
+<circle cx="261.9" cy="267.8" r="3.2" fill="#c29e1a"/>
+<circle cx="255.8" cy="271.7" r="3.2" fill="#c39e19"/>
+<circle cx="249.8" cy="275.2" r="3.2" fill="#c59f19"/>
+<circle cx="243.6" cy="278.2" r="3.2" fill="#c69f18"/>
+<circle cx="237.1" cy="281.0" r="3.2" fill="#c8a017"/>
+<circle cx="230.7" cy="283.2" r="3.2" fill="#caa016"/>
+<circle cx="224.5" cy="285.3" r="3.2" fill="#cba015"/>
+<circle cx="217.8" cy="287.2" r="3.2" fill="#cda115"/>
+<circle cx="211.4" cy="288.4" r="3.2" fill="#cea114"/>
+<circle cx="205.3" cy="289.2" r="3.2" fill="#d0a213"/>
+<circle cx="199.1" cy="289.8" r="3.2" fill="#d1a212"/>
+<circle cx="193.0" cy="290.2" r="3.2" fill="#d3a211"/>
+<circle cx="186.5" cy="290.4" r="3.2" fill="#d4a310"/>
+<circle cx="180.7" cy="290.1" r="3.2" fill="#d6a310"/>
+<circle cx="175.2" cy="289.7" r="3.2" fill="#d7a40f"/>
+<circle cx="170.0" cy="289.0" r="3.2" fill="#d9a40e"/>
+<circle cx="170.0" cy="289.0" r="7" class="first"/>
+<path d="M164.0,283.0l12,12m0,-12l-12,12" class="last"/>
+<text x="170" y="350" text-anchor="middle" class="note">360° · first = last (imposed)</text></svg><figcaption><span class="tag good">Closed</span><b>After loop closure</b> (section 5): the same 124 cameras, now a full ring with frame 124 on top of frame 1.</figcaption></figure>
+        </div>
+        <p class="legend">Colour runs from frame 1 <i style="background:#1b7373"></i>to frame 124<i style="background:#d9a40e"></i>.</p>
+        <p>Why the solver lost 44° is not established. The generated frames are probably not perfectly consistent with one rigid scene, so small errors pile up round the ring and nothing ties the end back to the start strongly enough. That is a hypothesis; it hasn't been tested.</p>
+      </article>
+    </section>
+
+<!-- ===================== 5 ===================== -->
+    <section class="module" id="s5">
+      <div class="module-head"><span class="num">5</span><h2 class="mt">Closing the loop</h2></div>
+      <p class="module-sub">Telling the reconstruction what the video was asked to do: end where it started.</p>
+      <article class="lesson col">
+        <p class="eyebrow">Lesson 5.1</p>
+        <h3>Spread the error round the ring</h3>
+        <p>A short script, <code>close_camera_loop.py</code>, builds a separate experimental camera model and leaves the original alone. It takes the rigid transform that would move the last camera onto the first, converts it to a twist with the SE(3) logarithm, and applies a growing fraction of it to each frame: none at frame 1, all of it at frame 124. COLMAP then re-optimises only the 3D points, with every camera and the focal length held fixed, and the splat is retrained from scratch on the corrected cameras.</p>
+        <div class="codebox"><pre>T_i' = exp( (i − 1)/123 · log( T_first · T_last⁻¹ ) ) · T_i        # camera-to-world, i = 1…124</pre></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Same 124 frames, full scene, 7,000 steps</th><th class="num">Original cameras</th><th class="num">Loop-closed</th></tr></thead>
+          <tbody>
+            <tr><td>Recovered sweep</td><td class="num">316.6°</td><td class="num">360° (imposed)</td></tr>
+            <tr><td>Largest step between frames</td><td class="num">4.52°</td><td class="num">4.97°</td></tr>
+            <tr><td>Direction reversals</td><td class="num">0</td><td class="num">0</td></tr>
+            <tr><td>Mean reprojection error, 45,940 observations</td><td class="num">0.66 px</td><td class="num">0.91 px</td></tr>
+            <tr><td>Mean PSNR, 15 held-out frames</td><td class="num">24.71 dB</td><td class="num">25.14 dB</td></tr>
+            <tr><td>Held-out frame 1 (the image's view)</td><td class="num">21.98 dB</td><td class="num">24.69 dB</td></tr>
+            <tr><td>Gaussians / training time</td><td class="num">257,004 / 39.1 s</td><td class="num">256,651 / 39.3 s</td></tr>
+          </tbody>
+        </table></div>
+        <p>The biggest gains are at the two ends of the orbit, where the seam was: frame 1 rose 2.7 dB and frame 121 rose 1.4 dB. Four of the 15 held-out frames got slightly worse (by 0.04–0.43 dB). The reprojection error went <i>up</i>, as expected: the points now have to agree with cameras that were moved, not solved.</p>
+        <figure><img src="media/heldout-renders.jpg" width="1024" height="768" loading="lazy" alt="Grid of 16 splat renders of the cat from held-out camera positions around the orbit"><figcaption><b>The loop-closed splat rendered at the 16 held-out evaluation cameras</b> (one frame in eight was never trained on). Two of the 16 views show the same source frame, so 15 distinct frames are scored.</figcaption></figure>
+        <div class="learned"><h4>What we learned</h4><ul>
+          <li>Registration rate and reprojection error both looked fine while the orbit was missing 43°. Plot the camera path, and compare the first and last cameras when the first and last frames match.</li>
+          <li>The closure is <b>imposed</b>: the script makes frame 124 equal frame 1 by construction. The PSNR gain shows the splat fits the generated frames better, not that the geometry is correct. There is no ground-truth 3D for a generated cat.</li>
+        </ul></div>
+        <details class="agent"><summary>Reproduce with a coding agent<span class="hint">loop prior</span></summary><div class="agent-body">
+          <h5>Agent prompt</h5>
+          <div class="codebox"><pre class="prompt">Given a COLMAP text model of a generated 360° orbit whose first and last frames show the same view, write a script that creates a NEW model directory (refuse to overwrite) with an experimental loop prior: compute C = T_first · inverse(T_last) on camera-to-world matrices, take its matrix logarithm, and replace each camera T_i by exp(alpha_i · log C) · T_i with alpha_i running from 0 at the first frame to 1 at the last. Check the result stays a rigid transform, the first camera doesn't move and the last equals the first. Then re-triangulate / bundle-adjust points only, with cameras and intrinsics fixed, and train the splat on both models with the same settings. Report the sweep, largest step, reprojection error before and after, and PSNR on the same held-out frames, and label the closure as imposed.</pre><button class="copy" type="button">Copy</button></div>
+        </div></details>
+      </article>
+    </section>
+
+<!-- ===================== 6 ===================== -->
+    <section class="module" id="s6">
+      <div class="module-head"><span class="num">6</span><h2 class="mt">The splat</h2></div>
+      <p class="module-sub">The loop-closed model, all 256,651 Gaussians, in your browser.</p>
+      <article class="lesson col">
+        <div class="viewer" id="viewer">
+          <div class="viewer-stage" id="viewer-stage" hidden></div>
+          <button class="load3d" id="load3d" type="button">Load 3D view <span>(about 6 MB)</span></button>
+          <div class="viewer-tools" id="viewer-tools" hidden><button type="button" id="v-reset">Back to the image's view</button><button type="button" id="v-side">Side</button><button type="button" id="v-back">Back</button></div>
+          <p class="viewer-status" id="viewer-status" aria-live="polite">Drag to orbit, scroll or pinch to zoom. Needs WebGL 2. The model is a 4.6 MB file; the viewer libraries add about 1 MB compressed.</p>
+        </div>
+        <p>It starts from the image's viewpoint and turns slowly; touch it to take over. Along the orbit it looks like the video. Leave the orbit, go above it or below it, and the ghosting and blur show what a single eye-level ring can't pin down: there were no views from there to learn from.</p>
+        <figure>
+          <video src="media/splat-turntable.mp4" poster="media/splat-turntable.jpg" controls muted loop playsinline preload="none" aria-label="The splat rendered round the training orbit"></video>
+          <figcaption><b>No WebGL 2? The same model rendered round the training orbit,</b> 124 views, captured from this page's viewer.</figcaption>
+        </figure>
+        <p style="font-size:15px;color:var(--muted)">The file is the trained PLY (63.7 MB, spherical harmonics to degree 3) converted to Niantic's SPZ format with Spark's <code>transcodeSpz</code>: nothing removed, but positions, colours and rotations are quantised to 8–24 bits. The model is shown in its own reconstruction frame, turned so the orbit plane is level.</p>
+      </article>
+    </section>
+
+<!-- ===================== 7 ===================== -->
+    <section class="module" id="s7">
+      <div class="module-head"><span class="num">7</span><h2 class="mt">How the pipeline works</h2></div>
+      <p class="module-sub">Two machines, one hand-off: an MP4 with its hashes, caption and generation settings.</p>
+      <ol class="flow">
+        <li class="video"><b>Image + LoRA</b>One reference image; the ORB360 step-1500 LoRA on MiniMax-H3 Ref2VA; the model card's orbit caption.<span class="where">Video side · 96 GB GPU</span></li>
+        <li class="video"><b>Orbit video</b>124 frames, 1024×768, 24 fps, 20 sampling steps, one seed. Checked by eye: one turn, back visible, end matches start.<span class="where">Video side</span></li>
+        <li><b>Frames and masks</b>Every frame extracted (no interpolation or clean-up). SAM 2.1 masks of the cat and hat, used for pose solving only.<span class="where">Splat side · RTX 5090</span></li>
+        <li><b>Structure from motion</b>Spirula's SfM on masked frames, one shared pinhole focal length; COLMAP 4.2.1 as a cross-check. 124/124 registered.<span class="where">Splat side</span></li>
+        <li><b>Camera review</b>Plot the path: sweep, steps, reversals, and first vs last camera. Here: 316.6° and a 44.5° seam.<span class="where">Splat side</span></li>
+        <li><b>Loop closure</b>Spread the first-to-last rigid error over the ring (SE(3) log/exp); refine 3D points only.<span class="where">Splat side</span></li>
+        <li><b>Train the splat</b>Spirula's stock 3DGS trainer, full frames, no masks, 7,000 steps, cap 500k Gaussians, every 8th frame held out. 39 s.<span class="where">Splat side</span></li>
+        <li><b>View</b>Desktop viewer at quarter turns, then SPZ for the web and Spark in the browser.<span class="where">Here</span></li>
+      </ol>
+      <div class="col">
+        <ul class="tight">
+          <li><b>Keep the whole scene.</b> A cut-out cat trained on masks gave a tidy foreground with ghosting at the hat and fur; training on full frames keeps the snow, trees and mountains and was preferred.</li>
+          <li><b>Fewer frames weren't better.</b> 37 frames picked to line up with H3's video-VAE chunk boundaries gave 63,258 Gaussians against about 257,000, and on the one held-out frame both runs share it scored 17.89 dB against 21.98 dB. One shared frame supports no general conclusion.</li>
+          <li><b>Every stage writes its exact command and inputs,</b> and the video's SHA-256 travels with it, so a later run can prove it used the same clip.</li>
+        </ul>
+        <details class="agent"><summary>Reproduce with a coding agent<span class="hint">splat side</span></summary><div class="agent-body">
+          <div class="codebox"><pre># Spirula Studio release 2026.9.24 (Vulkan) and the official COLMAP 4.2.1 CUDA container.
+# pipeline.py and close_camera_loop.py are small local helpers, not published yet. Paths are illustrative.
+python3 splat-pipeline/pipeline.py prepare runs/inputs/orbit.mp4 runs/orbit-spirula --backend spirula --fps 24
+COLMAP_GPU=1 python3 splat-pipeline/pipeline.py prepare runs/inputs/orbit.mp4 runs/orbit-colmap --backend colmap --fps 24
+python3 splat-pipeline/close_camera_loop.py runs/orbit-spirula/sparse-text runs/orbit-loop/sparse-text
+# then COLMAP bundle adjustment on the new model with all cameras and intrinsics fixed (3D points only)
+spirula train 3dgs --data runs/orbit-loop --colmap-recon-dir sparse/0 --num-iterations 7000 --cap-max 500000 \
+  --eval-mode interval --eval-interval 8 --save-eval-images 1 --load-masks 0</pre><button class="copy" type="button">Copy</button></div>
+          <h5>Agent prompt</h5>
+          <div class="codebox"><pre class="prompt">Reconstruct a generated 360° orbit video as a Gaussian splat. Extract every frame. Solve cameras with masked SfM (subject masks from SAM 2.1) using one shared pinhole focal length, and cross-check with COLMAP. Do not accept a reconstruction on registration rate alone: plot the camera centres, report the angular sweep, the largest step between neighbouring frames, any direction reversals, and the angle between the first and last cameras when the first and last frames match. If the loop doesn't close, create a separate loop-prior camera model, refine points only, and train both models with identical settings on full frames, holding out every eighth frame. Compare PSNR on the same held-out frames and say plainly that the closure was imposed.</pre><button class="copy" type="button">Copy</button></div>
+        </div></details>
+      </div>
+    </section>
+
+<!-- ===================== 8 ===================== -->
+    <section class="module" id="s8">
+      <div class="module-head"><span class="num">8</span><h2 class="mt">Honest limits</h2></div>
+      <p class="module-sub">What this page does and doesn't show.</p>
+      <div class="col">
+        <ul class="tight">
+          <li><b>One image, one seed, one splat.</b> Every orbit test here is a single seed. The splat comes from one generated video. None of it is a benchmark.</li>
+          <li><b>The loop closure is assumed, not measured.</b> It makes the ends meet because we told it to. A generated video has no true geometry to check it against.</li>
+          <li><b>The splat case is unsolved.</b> Pictures from above with an orbit from below still drift back up, height changes inside one clip still tumble, and height prompts don't yet move the camera on a real (non-Blender) image. This cat was splatted from an ordinary eye-level ring, so its top and underside are guesses.</li>
+          <li><b>Image fit isn't 3D accuracy.</b> 25.1 dB PSNR on held-out generated frames says the splat reproduces the video, including anything the video model got wrong.</li>
+        </ul>
+      </div>
+      <article class="lesson col">
+        <p class="eyebrow">Lesson 8.1</p>
+        <h3>The 1.37× sharper cat that had stopped orbiting</h3>
+        <p>A later run trained tilted rings and vertical loops on top of step 1500, and its automatic report scored the cat at step 750 as having <b>1.37×</b> the fine detail of step 1500. Looking at the frames showed why: on that seed the camera stalled at the side view and never reached the back, so the clip was mostly the image's sharp front. A sharpness score rewards a camera that doesn't move.</p>
+        <figure><img src="media/false-win.jpg" width="1280" height="576" loading="lazy" alt="Three rows of five frames: step 1500 goes round the cat; the step-750 seed that scored sharper keeps facing the camera; another step-750 seed goes round"><figcaption><span class="tag bad">False win</span><b>Frames 1, 26, 51, 76 and 101.</b> Top: step 1500. Middle: the step-750 clip that scored 1.37×, still facing front. Bottom: a second seed of the same checkpoint, which does go round.</figcaption></figure>
+        <p>Two more seeds showed the stall was that seed's bad luck: step 750 orbits on both. The lesson stands either way.</p>
+        <div class="learned"><h4>What we learned</h4><ul>
+          <li>A quality score on an orbit is meaningless without a check that the orbit happened. Gate sharpness on completion.</li>
+          <li>Look at the frames before believing a number that's better than expected.</li>
+          <li>Check one surprising result with a second seed before blaming the checkpoint.</li>
+        </ul></div>
+      </article>
+      <div class="gotchas">
+        <div class="gotcha"><b>Height prompts need cross-height training</b>A LoRA trained only on pictures taken from its own orbit learns to copy the pictures' height.</div>
+        <div class="gotcha"><b>Copying passes on-path tests</b>Only tests where the pictures and the orbit are at different heights show whether the caption is followed.</div>
+        <div class="gotcha"><b>Registered isn't solved</b>Full-frame SfM registered every frame on a 94° path that reversed 34 times. Masking to the subject for poses fixed that; training still used full frames.</div>
+        <div class="gotcha"><b>One focal length</b>Separate horizontal and vertical focal lengths let the solver bend the path; one shared focal length gave the smoothest orbit.</div>
+        <div class="gotcha"><b>Check the seam</b>When the first and last frames match, the first and last cameras should too. Here they were 44.5° apart.</div>
+        <div class="gotcha"><b>Mask file names</b>The standalone Spirula release writes zero-based, five-digit mask names; the frames were one-based and six-digit. Map them explicitly.</div>
+      </div>
+    </section>
+
+    <footer>
+      <p><b>Credits.</b> Video: MiniMax-H3 by MiniMax with the ORB360 LoRA, trained with kohya-ss musubi-tuner and Ostris's H3 training adapter. Powered by MiniMax H3; the generated clips and stills on this page are AI-generated with MiniMax H3 and are covered by the <a href="https://huggingface.co/MiniMaxAI/MiniMax-H3">MiniMax H3 Community License Agreement</a>, not by this repository's licence. Reconstruction: <a href="https://github.com/harry7557558/spirula-studio">Spirula Studio</a> (GPL-3.0), <a href="https://colmap.github.io/">COLMAP</a> (BSD) and Meta's SAM 2.1 (Apache-2.0). Web viewer: <a href="https://sparkjs.dev/">Spark</a> and three.js (both MIT). Test objects: the concrete cat statue and vintage video camera from <a href="https://polyhaven.com/">Poly Haven</a> (CC0), rendered in Blender.</p>
+      <p>The purple-hat cat image was made by Dylan for this test. Paths like <code>/mnt/...</code> elsewhere in the course are where things lived on the lab machines.</p>
+    </footer>
+  </main>
+</div>
+
+<script>
+document.querySelectorAll('.copy').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var pre = btn.parentElement.querySelector('pre');
+    var text = pre.innerText;
+    var done = function(){ btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy'; }, 1400); };
+    var fallback = function(){
+      var r = document.createRange(); r.selectNodeContents(pre);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      btn.textContent = 'Selected';
+      setTimeout(function(){ btn.textContent = 'Copy'; }, 1400);
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else { fallback(); }
+    } catch (e) { fallback(); }
+  });
+});
+</script>
+<script type="module">
+const btn = document.getElementById('load3d');
+const stage = document.getElementById('viewer-stage');
+const tools = document.getElementById('viewer-tools');
+const status = document.getElementById('viewer-status');
+btn.addEventListener('click', async () => {
+  const gl = document.createElement('canvas').getContext('webgl2');
+  if (!gl) { status.textContent = 'This browser has no WebGL 2, so the 3D view cannot run here. The turntable video below shows the same model.'; return; }
+  btn.disabled = true;
+  status.textContent = 'Loading the viewer…';
+  try {
+    const { mountViewer } = await import('./viewer.js');
+    stage.hidden = false;
+    const v = await mountViewer(stage, {
+      url: 'media/whitecat-loop.spz',
+      onProgress: (e) => { if (e && e.total) status.textContent = 'Loading the splat… ' + Math.round(100 * e.loaded / e.total) + '%'; },
+    });
+    window.splatViewer = v;
+    btn.hidden = true;
+    tools.hidden = false;
+    document.getElementById('v-reset').onclick = () => v.flyTo(0);
+    document.getElementById('v-side').onclick = () => v.flyTo(-90);
+    document.getElementById('v-back').onclick = () => v.flyTo(180);
+    status.textContent = (v.numSplats ? v.numSplats.toLocaleString('en') + ' Gaussians loaded. ' : '') + 'Drag to orbit, scroll or pinch to zoom.';
+  } catch (err) {
+    console.error(err);
+    btn.disabled = false;
+    status.textContent = 'The 3D view failed to load (' + (err && err.message ? err.message : err) + '). The turntable video below shows the same model.';
+  }
+});
+</script>
+</body>
+</html>
