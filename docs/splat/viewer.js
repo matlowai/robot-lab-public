@@ -17,7 +17,7 @@ const START = new THREE.Vector3(0, 0.0077, 0.8863);
 // The pinhole fitted by structure-from-motion: f = 1417 px at 768 px height -> 30.3 deg vertical.
 const FOV_DEG = 30.3;
 
-export async function mountViewer(container, { url, onProgress, autoRotate = true } = {}) {
+export async function mountViewer(container, { url, onProgress, autoRotate = true, onRotate } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   container.appendChild(renderer.domElement);
@@ -40,12 +40,13 @@ export async function mountViewer(container, { url, onProgress, autoRotate = tru
   controls.enableDamping = true;
   controls.minDistance = 0.35;
   controls.maxDistance = 2.5;
-  controls.autoRotate = autoRotate;
+  const setAuto = (on) => { controls.autoRotate = on; if (onRotate) onRotate(on); };
+  setAuto(autoRotate);
   controls.autoRotateSpeed = -1.2;
   controls.update();
-  const stop = () => { controls.autoRotate = false; };
-  renderer.domElement.addEventListener('pointerdown', stop, { once: true });
-  renderer.domElement.addEventListener('wheel', stop, { once: true, passive: true });
+  const stop = () => setAuto(false);
+  renderer.domElement.addEventListener('pointerdown', stop);
+  renderer.domElement.addEventListener('wheel', stop, { passive: true });
 
   function resize() {
     const w = container.clientWidth;
@@ -70,10 +71,12 @@ export async function mountViewer(container, { url, onProgress, autoRotate = tru
 
   return {
     numSplats: mesh.packedSplats?.numSplats ?? null,
+    // Rotation toggle (the Rotate button): on/off, or flip when called with no argument.
+    setRotate(on) { setAuto(on === undefined ? !controls.autoRotate : !!on); return controls.autoRotate; },
     reset() { camera.position.copy(START); controls.target.set(0, 0, 0); controls.update(); },
     // Place the camera on the training orbit at a given azimuth (degrees, 0 = first frame).
     setAzimuth(deg) {
-      controls.autoRotate = false;
+      setAuto(false);
       const a = (deg * Math.PI) / 180;
       const r = Math.hypot(START.x, START.z);
       camera.position.set(r * Math.sin(a), START.y, r * Math.cos(a));
@@ -83,7 +86,7 @@ export async function mountViewer(container, { url, onProgress, autoRotate = tru
     // Glide along the training orbit to an azimuth over ~0.8 s. A smooth move gives the splat
     // sorter time to keep up; an instant jump of 180 degrees can show a stale, ghosted frame.
     flyTo(deg) {
-      controls.autoRotate = false;
+      setAuto(false);
       const r = Math.hypot(START.x, START.z);
       const from = Math.atan2(camera.position.x, camera.position.z);
       let to = (deg * Math.PI) / 180;

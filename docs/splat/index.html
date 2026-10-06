@@ -186,7 +186,7 @@ footer{margin-top:72px;padding-top:16px;border-top:1px solid var(--rule);font-si
 
   <main>
     <header class="hero">
-      <div class="crumbs"><a href="../">← Patrol Lab course</a><a href="../talk/">The talk</a></div>
+      <div class="crumbs"><a href="../">← Patrol Lab course</a><a href="../talk/">The talk</a><a href="../talk/deck.html#end">← Back to the slides</a></div>
       <div class="plate"><span>Course log · Side quest</span><span><b>Splat Lab</b> · 2026-09-26 → 09-30</span><span>MiniMax-H3 · Blender · Spirula Studio · COLMAP</span></div>
       <h1>One cat image,<br><span>one 3D splat</span></h1>
       <p class="lede">A image of a white cat in a purple hat goes in. A video model with a camera LoRA walks a camera all the way round it, and that video becomes a 3D Gaussian splat you can turn in your browser. Two numbers that were both about 45° nearly sank it: an orbit LoRA that always filmed from the height of its reference pictures, and a reconstruction whose last camera ended up 44.5° away from its first.</p>
@@ -618,7 +618,7 @@ python src/musubi_tuner/minimax_h3_generate_video.py --task ref2va \
         <div class="viewer" id="viewer">
           <div class="viewer-stage" id="viewer-stage" hidden></div>
           <button class="load3d" id="load3d" type="button">Load 3D view <span>(about 6 MB)</span></button>
-          <div class="viewer-tools" id="viewer-tools" hidden><button type="button" id="v-reset">Back to the image's view</button><button type="button" id="v-side">Side</button><button type="button" id="v-back">Back</button></div>
+          <div class="viewer-tools" id="viewer-tools" hidden><button type="button" id="v-reset">Back to the image's view</button><button type="button" id="v-side">Side</button><button type="button" id="v-back">Back</button><button type="button" id="v-rotate" aria-pressed="true">Stop rotating</button></div>
           <p class="viewer-status" id="viewer-status" aria-live="polite">Drag to orbit, scroll or pinch to zoom. Needs WebGL 2. The model is a 4.6 MB file; the viewer libraries add about 1 MB compressed.</p>
         </div>
         <p>It starts from the image's viewpoint and turns slowly; touch it to take over. Along the orbit it looks like the video. Leave the orbit, go above it or below it, and the ghosting and blur show what a single eye-level ring can't pin down: there were no views from there to learn from.</p>
@@ -740,7 +740,10 @@ btn.addEventListener('click', async () => {
   try {
     const { mountViewer } = await import('./viewer.js');
     stage.hidden = false;
+    const rot = document.getElementById('v-rotate');
+    const showRot = (on) => { rot.textContent = on ? 'Stop rotating' : 'Rotate'; rot.setAttribute('aria-pressed', on ? 'true' : 'false'); };
     const v = await mountViewer(stage, {
+      onRotate: showRot,
       url: 'media/whitecat-loop.spz',
       onProgress: (e) => { if (e && e.total) status.textContent = 'Loading the splat… ' + Math.round(100 * e.loaded / e.total) + '%'; },
     });
@@ -750,12 +753,20 @@ btn.addEventListener('click', async () => {
     document.getElementById('v-reset').onclick = () => v.flyTo(0);
     document.getElementById('v-side').onclick = () => v.flyTo(-90);
     document.getElementById('v-back').onclick = () => v.flyTo(180);
+    rot.onclick = () => v.setRotate();
     status.textContent = (v.numSplats ? v.numSplats.toLocaleString('en') + ' Gaussians loaded. ' : '') + 'Drag to orbit, scroll or pinch to zoom.';
   } catch (err) {
     console.error(err);
     btn.disabled = false;
     status.textContent = 'The 3D view failed to load (' + (err && err.message ? err.message : err) + '). The turntable video below shows the same model.';
   }
+});
+</script>
+<script>
+// Presenting: Left arrow (or PageUp) at the top of this page goes back to the last slide of the talk deck.
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  if ((e.key === 'ArrowLeft' || e.key === 'PageUp') && window.scrollY < 40) { e.preventDefault(); location.href = '../talk/deck.html#end'; }
 });
 </script>
 </body>
