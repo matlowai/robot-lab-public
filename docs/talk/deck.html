@@ -556,6 +556,33 @@ body.grid #notes,body.grid #bar{display:none}
     <p><b>Agent builder:</b> this is LLM-as-judge, measured against ground truth, with its failure modes. <b>LLM trainer:</b> fine-tuning on one error metric moved the others; always re-run the full table. <b>Exec:</b> a checker is a model too, and it needs its own denominator.</p>
   </aside>
 </section>
+<section class="slide alt" style="gap:28px">
+  <p class="eyebrow b" style="--i:0">Same model, split into skills · a planner calls pick up → move to → release</p>
+  <h2 class="b" style="--i:1;font-size:64px">The skill undid its own lift, until a checker said "it's up"</h2>
+  <div class="row grow" style="gap:56px;align-items:flex-start">
+    <div class="col b" style="--i:2;flex:1.25;gap:16px">
+      <p class="mono small sn">STRICT PLACES · 20 S EPISODES · SAME SEEDS</p>
+      <table class="t" style="font-size:30px">
+        <tr><th></th><th class="n">Training objects</th><th class="n">Never trained on</th></tr>
+        <tr><td>Skills, fixed 8 s per skill</td><td class="n">28/96</td><td class="n">7/48</td></tr>
+        <tr class="win"><td>Skills + fine-tuned checker</td><td class="n hl">60/96</td><td class="n hl">12/48</td></tr>
+        <tr><td>Night 2, one model end to end</td><td class="n">61/96</td><td class="n">12/48</td></tr>
+      </table>
+      <p class="small">Median time to a place: about 11 s for skills, 4.5 s for the single model.</p>
+    </div>
+    <div class="col b" style="--i:3;flex:1;gap:18px">
+      <p class="small">Pick up lifted the object, kept moving for its full 8 s and set it back down; the after-skill check rightly said "not held", so it retried until time ran out.</p>
+      <p class="small">Now the fine-tuned Gemma looks every second during the skill: <span class="hl">"is it up?"</span> On yes, stop and move on.</p>
+      <p class="small">What still fails: in <span class="al mono">59 of 72</span> failures the claw never got hold of the object. A checker can't fix a grasp.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>The same GR00T model, fine-tuned on the demos cut into three skills, driven by a local Gemma planner that calls pick up, move to and release as tools. The first run scored 28 of 96 on training objects. The logs showed why: pick up lifted the object, then kept moving to its fixed 8-second limit and put it back down. The after-skill check correctly said "not held", so the planner retried, and the 20-second episode ran out.</p>
+    <p>The fix: while a skill runs, the fine-tuned Gemma checker looks once a second, "is it held and lifted?", and the skill stops on yes. That more than doubled the score to 60 of 96, a tie with the single end-to-end model (61 of 96), and 12 of 48 on objects it never trained on, also a tie. It is slower: about 11 seconds per place against 4.5.</p>
+    <p>Of the 72 remaining failures, 59 never lifted the object. The structure works when the grasp works; the grasp is the next thing to fix. One run each, simulation, same seeds.</p>
+    <p><b>Agent builder:</b> a tool call needs a stop condition, not just a timeout. <b>LLM trainer:</b> the fine-tuned checker made the difference here, despite its known errors. <b>Exec:</b> splitting a task into skills doesn't beat a good single model by itself; it made the failure easy to see and fix.</p>
+  </aside>
+</section>
 
 <!-- 18 -->
 <section class="slide alt">
