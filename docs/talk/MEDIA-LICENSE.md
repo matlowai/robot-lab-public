@@ -35,5 +35,5 @@ research or evaluation use. Until that is resolved, we treat these rollout media
 
 `media/arm_gr00t_check_settled.jpg` is a scripted-expert demo frame, not model output.
 
-The reel and the deck were updated on 2026-10-06 with the GR00T nights; the field guide is being updated,
+The reel, the deck and the field guide were updated on 2026-10-06 with the GR00T nights,
 and newer results are in the course.

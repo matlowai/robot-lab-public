@@ -310,6 +310,43 @@ footer b{color:var(--paper)}
 .race-block{display:flex;flex-direction:column;gap:12px;margin-block:28px;min-width:0}
 .race-title{font-family:var(--display,'Archivo',sans-serif);font-size:clamp(20px,2.4vw,28px);margin:0;text-wrap:balance}
 .race-lede{margin:0;color:var(--muted);max-width:70ch}
+
+/* let go (GR00T arm) */
+.arc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:860px){.arc{grid-template-columns:1fr}}
+.arc figure{margin:0;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;align-content:start}
+.arc video{width:100%;aspect-ratio:2/1;height:auto;object-fit:cover;background:#000}
+.arc figcaption{padding:12px 14px;font-size:14px;color:var(--muted);display:grid;gap:6px}
+.arc figcaption b{color:var(--paper)}
+.score-tag{font:700 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--paper)}
+.score-tag em{font-style:normal;color:var(--hazard-ink)}
+.score-tag.bad em{color:var(--alarm)}
+.score-tag.good em{color:var(--sensor)}
+.tally{display:grid;gap:8px;max-width:820px}
+.trow{display:grid;grid-template-columns:minmax(0,190px) 1fr 92px;gap:10px;align-items:center;font:600 13px/1.25 var(--f-mono)}
+.trow .t{height:16px;background:var(--ink);border-radius:3px;overflow:hidden}
+.trow .b{display:block;height:100%;border-radius:3px;transition:width 1s cubic-bezier(.2,.8,.2,1),opacity .4s}
+.trow .val{text-align:right;font-variant-numeric:tabular-nums}
+.trow.sub{font-size:12px;color:var(--muted)}
+@media (max-width:560px){.trow{grid-template-columns:minmax(0,1fr) 84px}.trow .t{grid-column:1/-1;grid-row:2}}
+
+/* checker */
+.checker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:760px){.checker{grid-template-columns:1fr}}
+.vcard{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;align-content:start;transition:border-color .3s,box-shadow .3s}
+.vcard img{width:100%;aspect-ratio:2/1;height:auto;object-fit:cover;background:#000}
+.vcard .body{padding:14px 16px;display:grid;gap:10px}
+.vcard .q{font-size:15px;font-weight:600}
+.vcard.placed{border-color:var(--sensor);box-shadow:0 0 0 1px var(--sensor)}
+.vcard.notplaced{border-color:var(--alarm);box-shadow:0 0 0 1px var(--alarm)}
+.answers{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.answers li{display:grid;grid-template-columns:120px 1fr;gap:4px 10px;font-size:14px;align-items:baseline}
+.answers li > b{font:600 12px/1.4 var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.answers .ok{color:var(--sensor);font-weight:700}
+.answers .no{color:var(--alarm);font-weight:700}
+.answers q{color:var(--muted);font-style:italic}
+@media (max-width:520px){.answers li{grid-template-columns:1fr}}
+#let-go td.num,#let-go th.num{white-space:nowrap}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -357,8 +394,9 @@ footer b{color:var(--paper)}
       <a href="#curves"><span>05</span>Real curves</a>
       <a href="#denominator"><span>06</span>Denominator</a>
       <a href="#real-or-fake"><span>07</span>Real or fake</a>
-      <a href="#industries"><span>08</span>Industries</a>
-      <a href="#federate"><span>09</span>Build it in-house</a>
+      <a href="#let-go"><span>08</span>Let go</a>
+      <a href="#industries"><span>09</span>Industries</a>
+      <a href="#federate"><span>10</span>Build it in-house</a>
     </nav>
   </div>
 </header>
@@ -654,11 +692,100 @@ footer b{color:var(--paper)}
   </div>
 </section>
 
-<!-- 08 INDUSTRIES -->
+<!-- 08 LET GO (SO-101 arm, NVIDIA GR00T N1.7, 2026-10-04 → 06) -->
+<section class="sec" id="let-go">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">08 <b>· Missing data, not a missing model</b></p>
+      <h2>It learned to grasp. Nobody had shown it letting go.</h2>
+      <p class="core">Same arm, same bowl, same strict check. We swapped FLUX 3 Action (0 real successes) for NVIDIA GR00T N1.7, a 3-billion-parameter robot model with an SO-101 fine-tuning path. Night 1 picked objects up, carried them to the bowl and held on. The fix was in the demos. Every number here is simulation, counted as strict successes out of every attempt.</p>
+    </div>
+    <div class="note" data-lens-for="let-go"><span class="who"></span><p></p></div>
+    <div class="instrument" style="display:grid;gap:22px">
+      <div class="arc">
+        <figure><video src="media/arm_gr00t_never_lets_go.mp4" poster="media/arm_gr00t_never_lets_go_still.jpg" muted loop playsinline autoplay controls preload="metadata" aria-label="Night 1: GR00T lifts the blue block over the bowl and never opens the gripper"></video>
+          <figcaption><span class="score-tag bad">Night 1 <em>8 / 72</em></span><b>It never lets go.</b> Blue block, a training object: lifted, carried, and held over the bowl for the full 20 s. In 48 of the 59 episodes that lifted but didn't place, the policy never commanded the gripper open. The recorder reset the moment an object landed, so each demo held about 1 release frame in ~145.</figcaption></figure>
+        <figure><video src="media/arm_gr00t_let_go_mug.mp4" poster="media/arm_gr00t_let_go_mug_still.jpg" muted loop playsinline autoplay controls preload="metadata" aria-label="Night 2: GR00T places the mug in the bowl and opens"></video>
+          <figcaption><span class="score-tag good">Night 2 <em>73 / 144</em></span><b>Record the release.</b> Re-recorded demos keep the release, retreat and settle: a median of 42 release frames across 862 demos. The fine-tune put 5× loss weight on frames where the gripper opens or closes. The mug, a training object: 20 of 24.</figcaption></figure>
+        <figure><video src="media/arm_gr00t_rl_gate_cracker_box.mp4" poster="media/arm_gr00t_rl_gate_cracker_box_still.jpg" muted loop playsinline autoplay controls preload="metadata" aria-label="Night 1 GR00T with a learned release gate drops the cracker box into the bowl"></video>
+          <figcaption><span class="score-tag good">Or: + release gate</span><b>Learn when to let go.</b> Keep night 1's model frozen and train a small PPO policy on top: each action chunk it adds an arm correction of at most 4° and decides whether to open now. Cracker box, never trained on, on a sealed test seed: GR00T alone holds it over the bowl; with the gate it drops it in.</figcaption></figure>
+      </div>
+      <div class="tally" aria-label="Strict real places">
+        <p class="cap"><b>Real places in the bowl, strict</b>. Six objects, four used in training and two never trained on.</p>
+        <div class="trow"><span>FLUX 3 Action</span><span class="t"><span class="b" style="width:0"></span></span><span class="val">0 real</span></div>
+        <div class="trow"><span>GR00T night 1</span><span class="t"><span class="b" style="width:11.1%;background:var(--alarm)"></span></span><span class="val">8 / 72</span></div>
+        <div class="trow"><span>GR00T night 2</span><span class="t"><span class="b" style="width:50.7%;background:var(--sensor)"></span></span><span class="val">73 / 144</span></div>
+        <div class="trow sub"><span>· training objects</span><span class="t"><span class="b" style="width:63.5%;background:var(--sensor)"></span></span><span class="val">61 / 96</span></div>
+        <div class="trow sub"><span>· never trained on</span><span class="t"><span class="b" style="width:25%;background:var(--sensor)"></span></span><span class="val">12 / 48</span></div>
+        <p class="cap" style="margin-top:10px"><b>Release gate on night 1's frozen model</b>, paired test on sealed seeds never used in training: same layout, same GR00T noise, with and without the gate.</p>
+        <div class="trow"><span>Training · alone</span><span class="t"><span class="b" style="width:12.5%;background:var(--alarm)"></span></span><span class="val">58 / 465</span></div>
+        <div class="trow"><span>Training · + gate</span><span class="t"><span class="b" style="width:82.2%;background:var(--hazard)"></span></span><span class="val">382 / 465</span></div>
+        <div class="trow"><span>Never trained · alone</span><span class="t"><span class="b" style="width:9.3%;background:var(--alarm)"></span></span><span class="val">22 / 236</span></div>
+        <div class="trow"><span>Never trained · + gate</span><span class="t"><span class="b" style="width:51.7%;background:var(--hazard)"></span></span><span class="val">122 / 236</span></div>
+        <p class="cap" style="font-size:12.5px">Read it as “GR00T + release gate”, not “GR00T learned to release”. The gate's numbers are not comparable with night 2's: different seeds, and the gate sits on night 1's model. It hasn't been tried on night 2's yet.</p>
+      </div>
+
+      <div style="display:grid;gap:12px;border-top:1px dashed var(--line);padding-top:20px">
+        <h3>You be the checker</h3>
+        <p class="cap" style="max-width:70ch">A real robot has no simulator to say whether it worked. So we asked local vision-language models one question about the last frame of each attempt, and scored them against simulator truth. Scene camera left, wrist camera right. <b>Has the mug been placed in the bowl?</b></p>
+        <div class="checker" id="checker">
+          <div class="vcard" data-truth="placed">
+            <img src="media/arm_gr00t_check_settled.jpg" alt="Frame A: the arm has stepped back; the mug sits inside the yellow bowl" loading="lazy" width="512" height="256">
+            <div class="body">
+              <div class="det"><span class="verdict-tag">Frame A</span></div>
+              <p class="q">Placed in the bowl?</p>
+              <div class="row"><button type="button" class="btn" data-ans="yes">Yes, placed</button><button type="button" class="btn" data-ans="no">No</button></div>
+              <ul class="answers" hidden>
+                <li><b>Simulator</b><span class="ok">Placed</span></li>
+                <li><b>You</b><span data-you></span></li>
+                <li><b>Gemma 4 12B</b><span><span class="ok">Yes</span> <q>The mug is inside the bowl and the gripper is releasing it.</q> 0.64 s</span></li>
+                <li><b>Qwen 3.8 27B</b><span><span class="ok">Yes</span> <q>The blue mug is resting at the bottom inside the yellow bowl, and the gripper is open and retracted away from it.</q> 3.6 s</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="vcard" data-truth="notplaced">
+            <img src="media/arm_gr00t_check_held.jpg" alt="Frame B: the gripper still holds the mug at the rim of the yellow bowl" loading="lazy" width="512" height="256">
+            <div class="body">
+              <div class="det"><span class="verdict-tag">Frame B</span></div>
+              <p class="q">Placed in the bowl?</p>
+              <div class="row"><button type="button" class="btn" data-ans="yes">Yes, placed</button><button type="button" class="btn" data-ans="no">No</button></div>
+              <ul class="answers" hidden>
+                <li><b>Simulator</b><span class="no">Not placed</span></li>
+                <li><b>You</b><span data-you></span></li>
+                <li><b>Gemma 4 12B</b><span><span class="no">Yes · false “done”</span> <q>The mug is inside the bowl and the gripper is releasing it.</q> 0.49 s</span></li>
+                <li><b>Qwen 3.8 27B</b><span><span class="ok">No</span> <q>Mug is still held by the gripper at/above the rim; the bowl interior is empty in both views.</q> 46 s on this frame</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <p class="lesson" id="checkLesson" hidden>Gemma gave <em>the same sentence</em> for both frames. Frame B is night 1's GR00T, still gripping the mug at the rim.</p>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Served locally · 95 frames</th><th class="num">Accuracy</th><th class="num">False “done”</th><th class="num">Missed</th><th class="num">Median latency</th></tr></thead>
+          <tbody>
+            <tr><td>Gemma 4 12B</td><td class="num">94.7%</td><td class="num">5 / 50</td><td class="num">0 / 45</td><td class="num">0.64 s</td></tr>
+            <tr><td>Qwen 3.8 27B</td><td class="num">97.9%</td><td class="num">1 / 50</td><td class="num">1 / 45</td><td class="num">1.9 s</td></tr>
+          </tbody>
+        </table></div>
+        <p class="cap" style="font-size:12.5px">95 end-of-attempt frames: 45 real places, 50 failures. The 45 real places were photographed after the arm released, stepped back and the scene settled. Photographed at the instant of release, fingers still around the object, Gemma missed 24 of 45.</p>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Gemma 4 12B, 4-bit QLoRA · one training seed</th><th class="num">Base</th><th class="num">Fine-tuned</th></tr></thead>
+          <tbody>
+            <tr><td>Says “done” on a failed attempt (settled frames)</td><td class="num">12 / 50</td><td class="num">3 / 50</td></tr>
+            <tr><td>Misses a real place photographed at release</td><td class="num">15 / 45</td><td class="num">41 / 45</td></tr>
+            <tr><td>Misses a real place on objects it never trained on</td><td class="num">3 / 12</td><td class="num">9 / 12</td></tr>
+          </tbody>
+        </table></div>
+        <p class="cap" style="font-size:12.5px">The fine-tune fixed the error it was trained against and created another. Both columns were scored in the fine-tuning harness, whose base gives 12 / 50, not 5 / 50, so compare within a table, not across.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 INDUSTRIES -->
 <section class="sec" id="industries">
   <div class="wrap">
     <div class="sec-head">
-      <p class="eyebrow">08 <b>· Across industries</b></p>
+      <p class="eyebrow">09 <b>· Across industries</b></p>
       <h2>Every industry gets the same three questions.</h2>
       <p class="core">What will the machine do, what can we break in simulation before it ships, and what will we measure once it's working near people and property? Pick a field.</p>
     </div>
@@ -670,13 +797,14 @@ footer b{color:var(--paper)}
   </div>
 </section>
 
-<!-- 09 FEDERATE -->
+<!-- 10 FEDERATE -->
 <section class="sec" id="federate">
   <div class="wrap">
     <div class="sec-head">
-      <p class="eyebrow">09 <b>· Build the capability</b></p>
+      <p class="eyebrow">10 <b>· Build the capability</b></p>
       <h2>It isn't mature yet. That's the reason to start.</h2>
       <p class="core">The organizations that will be ready are the ones with people who already know how to test these systems. Our proposal is a small core team that builds simulation, evaluation and training skills once and lends them to every business unit and partner.</p>
+      <p class="core">Our arm shows both halves. Two nights took it from 8 of 72 to 73 of 144 real places, and it still places only 12 of 48 objects it never trained on. The release gate hasn't been tried on the better model, the fine-tuned checker isn't ready to use, and every number is from simulation.</p>
     </div>
     <div class="note" data-lens-for="federate"><span class="who"></span><p></p></div>
     <div class="instrument" style="display:grid;gap:8px">
@@ -691,7 +819,7 @@ footer b{color:var(--paper)}
         </div>
       </div>
       <div class="why4">
-        <div class="why"><h3>The tools are open</h3><p>Isaac Lab, LeRobot, and open world-action models like FLUX 3 Action all run on one workstation.</p></div>
+        <div class="why"><h3>The tools are within reach</h3><p>Isaac Lab, LeRobot and pretrained robot models like NVIDIA GR00T N1.7 run on one workstation. Read each license first: both arm models we used ship non-commercial terms.</p></div>
         <div class="why"><h3>Training is cheap</h3><p>2 billion steps took 2 hours. Knowing whether the result was real took days.</p></div>
         <div class="why"><h3>Vendors arrive first</h3><p>You'll be asked to approve, buy or answer for systems you didn't build.</p></div>
         <div class="why"><h3>Skills transfer</h3><p>Agent and LLM teams already have half of it: rollouts, evals, reward design.</p></div>
@@ -709,7 +837,7 @@ footer b{color:var(--paper)}
 
 <footer>
   <div class="wrap">
-    <p><b>Credits.</b> Simulation: NVIDIA Isaac Sim and Isaac Lab, including the Spot robot asset and its pretrained locomotion policy. Arm model: FLUX 3 Action © Black Forest Labs, under the FLUX Kommunity License. Robot-arm data references the DROID dataset (CC BY 4.0). SO-101 open-hardware arm and the LeRobot library from Hugging Face. The compound, scenarios and all scores on this page are our own simulated work.</p>
+    <p><b>Credits.</b> Simulation: NVIDIA Isaac Sim and Isaac Lab, including the Spot robot asset and its pretrained locomotion policy. Arm models: FLUX 3 Action © Black Forest Labs, under the FLUX Kommunity License; from 2026-10-04, NVIDIA GR00T N1.7, fine-tuned from GR00T-N1.7-3B. The LICENSE file shipped with that checkpoint is the non-commercial NVIDIA License, so we treat GR00T rollout clips here as non-commercial (<a href="MEDIA-LICENSE.md">media license</a>). Outcome checks: Gemma 4 12B and Qwen 3.8 27B, served locally. Robot-arm data references the DROID dataset (CC BY 4.0). SO-101 open-hardware arm and the LeRobot library from Hugging Face. The compound, scenarios and all scores on this page are our own simulated work.</p>
     <p>The plaza in section 02 is a simplified 2-D version, trained with evolution strategies so it fits in a browser. All other numbers come from the real runs.</p>
   </div>
 </footer>
@@ -1033,6 +1161,12 @@ const LENS = {
     agents: 'Your LLM-as-judge or regex success check is this detector. Read a sample of transcripts, the way we watched videos, before you trust a pass rate.',
     llm: 'A reward model can be wrong in exactly this way, and a policy will find the hole. Our check tested only horizontal distance and height, with no lift and no upright bowl. A fixed eval seed replayed the same bad placement for every checkpoint.'
   },
+  'let-go': {
+    exec: 'The model wasn\'t the problem; the training examples were. Our demos never showed the hand opening, so the robot never opened it. Fixing the recordings took the arm from 8 of 72 to 73 of 144 in one more night. Before buying a bigger model, ask what the data actually contains, and measure whoever says “done”.',
+    new: 'A robot that learns by copying can only copy what it was shown. Our recordings stopped the instant the object landed, so they held about one frame of the hand opening out of roughly 145. It learned to grab and carry, then held on. Below, try judging two final frames yourself.',
+    agents: 'This is a missing-trajectory bug: the fine-tuning transcripts ended before the step you wanted learned. The checker is LLM-as-judge with ground truth for once, and its error rate moved with when the snapshot was taken: at the instant of release Gemma missed 24 of 45 real places; after a short settle it missed none.',
+    llm: 'Imitation fine-tuning has SFT\'s blind spot: label coverage. Night 2 added a release tail and 5× loss weight on gripper open/close frames; at the halfway checkpoint that weight overshot (17 of 96) before the final recovered. The gate is residual PPO on a frozen policy, scored paired on sealed seeds. The QLoRA judge traded false “done” (12/50 → 3/50) for missed releases (15/45 → 41/45).'
+  },
   industries: {
     exec: 'Wherever machines work around people, someone will ask: how often does it fail, per hour of exposure, under which conditions, and can we replay what happened? Simulation is where those answers are produced before deployment.',
     new: 'Pick an industry to see what a robot would do there and what you\'d want to test first.',
@@ -1040,7 +1174,7 @@ const LENS = {
     llm: 'Each domain is a new environment, a new reward and a new distribution shift. The training recipe transfers. The scenarios and metrics are domain work.'
   },
   federate: {
-    exec: 'It isn\'t mature, and that\'s why now is the time. The tools are open, one workstation is enough to start, and the scarce skill is knowing how to test these systems. A small core team builds that skill once and lends it to every unit, instead of each unit buying black boxes.',
+    exec: 'It isn\'t mature, and that\'s why now is the time. The tools are within reach, one workstation is enough to start, and the scarce skill is knowing how to test these systems. A small core team builds that skill once and lends it to every unit, instead of each unit buying black boxes.',
     new: 'A small central team learns the hard parts (simulation, testing, training) and packages them so other teams can reuse them for their own robots and vendors.',
     agents: 'It works like a platform team for agents: a shared harness, shared scorecards, shared incident replay. The units bring the domain scenarios.',
     llm: 'Your fine-tuning and RL infrastructure already covers half of it: distributed rollouts, eval discipline, reward design. Add a simulator and someone who can write physical scenarios.'
@@ -1521,6 +1655,16 @@ $$('#quiz [data-pick]').forEach(btn => btn.addEventListener('click', () => {
   $('#quizLesson').hidden = false;
 }));
 if (RM) $$('video[autoplay]').forEach(v => { v.removeAttribute('autoplay'); v.pause(); });
+
+// ---------- you be the checker (answers as recorded: results_*_placed_v2.json) ----------
+$$('#checker [data-ans]').forEach(btn => btn.addEventListener('click', () => {
+  const card = btn.closest('.vcard'), yes = btn.dataset.ans === 'yes', right = yes === (card.dataset.truth === 'placed');
+  card.classList.add(card.dataset.truth);
+  card.querySelectorAll('[data-ans]').forEach(b => { b.disabled = true; b.setAttribute('aria-pressed', String(b === btn)); });
+  const you = card.querySelector('[data-you]'); you.className = right ? 'ok' : 'no'; you.textContent = (yes ? 'Yes' : 'No') + (right ? ' · right' : ' · wrong');
+  card.querySelector('.answers').hidden = false;
+  if ($$('#checker .answers[hidden]').length === 0) $('#checkLesson').hidden = false;
+}));
 
 // ---------- industries ----------
 const ICON = {
