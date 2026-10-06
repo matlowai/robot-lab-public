@@ -205,7 +205,7 @@ h2.part-title span{color:var(--teal)}
 <!-- ===================== PART I REDO: GR00T ===================== -->
     <section class="module" id="arm">
       <div class="module-head"><span class="num">I</span><h2 class="mt">The arm, redone: it grasped, but never let go</h2></div>
-      <p class="module-sub">Part I's SO-101 arm (put an object in a bowl, Isaac Lab 3.0) moves from FLUX 3 Action to NVIDIA GR00T N1.7. Two nights: the first model grasped and lifted but never opened its hand, and the cause was in the demos, not the model. All numbers are simulation, strict successes, with their denominators. 2026-10-04 → 10-06.</p>
+      <p class="module-sub">Part I's SO-101 arm (put an object in a bowl, Isaac Lab 3.0) moves from FLUX 3 Action to NVIDIA GR00T N1.7. Two nights: the first model grasped and lifted but never opened its hand, and the cause was in the demos, not the model. All numbers are simulation, strict successes, with their denominators. GR00T rollout clips are treated as non-commercial (<a href="talk/MEDIA-LICENSE.md">media license</a>). 2026-10-04 → 10-06.</p>
 
       <article class="lesson col">
         <p class="eyebrow">Lesson I.1</p>
@@ -296,9 +296,44 @@ bash tools/overnight_gr00t_v2.sh full            # record -> convert -> fine-tun
       </article>
 
       <article class="lesson col">
-        <p class="eyebrow">Next</p>
-        <h3>A learned release gate</h3>
-        <p>Residual reinforcement learning on top of the frozen night-1 model (the one that grasps but never lets go): a small PPO policy nudges the joints by a few degrees and decides when to open, rewarded by the same strict checks. Its sealed-seed evaluation is running; the result goes here when it lands, reported as "GR00T + release gate", not "GR00T learned to release". Code: <a href="https://github.com/matlowai/robot-lab-public/tree/main/code/robot-lab/rl"><code>code/robot-lab/rl</code></a>.</p>
+        <p class="eyebrow">Lesson I.5</p>
+        <h3>Or learn when to let go</h3>
+        <p>The other route keeps night 1's model, the one that grasps but never releases, frozen, and trains a small PPO policy on top of it with residual reinforcement learning. Every action chunk, the policy adds a correction of at most 4° to the arm and decides whether to open the gripper now. Reward comes from the same strict checks. About five hours of training on one GPU, 185 waves of 64 parallel environments; two of 34 training rounds crashed (an environment ended during its settle step) and were skipped.</p>
+        <p>Then a paired test on <b>sealed seeds</b> never used in training: for each layout, GR00T alone and GR00T with the gate see the same scene and the same model noise.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Object</th><th>Split</th><th class="num">GR00T alone</th><th class="num">+ release gate</th></tr></thead>
+          <tbody>
+            <tr><td>Mug</td><td>train</td><td class="num">23/116</td><td class="num">113/116</td></tr>
+            <tr><td>Blue block</td><td>train</td><td class="num">14/116</td><td class="num">103/116</td></tr>
+            <tr><td>Soup can</td><td>train</td><td class="num">17/121</td><td class="num">104/121</td></tr>
+            <tr><td>Sugar box</td><td>train</td><td class="num">4/112</td><td class="num">62/112</td></tr>
+            <tr><td>Mustard bottle</td><td>held out</td><td class="num">7/121</td><td class="num">76/121</td></tr>
+            <tr><td>Cracker box</td><td>held out</td><td class="num">15/115</td><td class="num">46/115</td></tr>
+            <tr><td><b>Training objects</b></td><td></td><td class="num"><b>58/465</b> (12%)</td><td class="num"><b>382/465</b> (82%)</td></tr>
+            <tr><td><b>Held-out objects</b></td><td></td><td class="num"><b>22/236</b> (9%)</td><td class="num"><b>122/236</b> (52%)</td></tr>
+          </tbody>
+        </table></div>
+        <ul class="tight">
+          <li><b>Read it as "GR00T + release gate",</b> not "GR00T learned to release": the gate is a separate learned policy, and the opening itself is a fixed jaw-open action.</li>
+          <li><b>Not comparable to night 2's 73/144:</b> different seeds, and the gate sits on night 1's model. The gate has not been tried on night 2's model yet.</li>
+          <li><b>Look at the strips.</b> We watched gated successes on the blue block and the held-out cracker box (in the bowl, gripper open) and a base failure that holds the box over the bowl.</li>
+        </ul>
+        <figure>
+          <video src="talk/media/arm_gr00t_rl_base_cracker_box.mp4" poster="talk/media/arm_gr00t_rl_base_cracker_box_still.jpg" controls muted loop playsinline preload="metadata" aria-label="GR00T alone holds the cracker box over the bowl"></video>
+          <figcaption><span class="tag bad">Alone</span><b>Sealed layout, cracker box (held out).</b> Night 1's GR00T carries it to the bowl and holds on.</figcaption>
+        </figure>
+        <figure>
+          <video src="talk/media/arm_gr00t_rl_gate_cracker_box.mp4" poster="talk/media/arm_gr00t_rl_gate_cracker_box_still.jpg" controls muted loop playsinline preload="metadata" aria-label="With the RL release gate, the same layout ends with the cracker box in the bowl"></video>
+          <figcaption><span class="tag good">+ gate</span><b>Same layout, same GR00T noise,</b> with the release gate: it lets go over the bowl.</figcaption>
+        </figure>
+        <details class="agent"><summary>Reproduce with a coding agent<span class="hint">commands</span></summary><div class="agent-body">
+          <div class="codebox"><pre>cd /mnt/work/AI/robot-lab/rl                    # code: code/robot-lab/rl in this repo
+/mnt/weights/ai/isaac/IsaacLab/.venv/bin/python tests/test_core.py   # CPU tests
+RUN=/mnt/weights/ai/robot-lab-data/gr00t-rl/runs/&lt;name&gt; GR00T_CKPT=&lt;checkpoint&gt; \
+  TRAIN_END=$(date -d '+5 hours' +%s) GPU=1 bash scripts/run_rl.sh   # train, sealed eval, REPORT.md</pre><button class="copy" type="button">Copy</button></div>
+          <h5>Agent prompt</h5>
+          <div class="codebox"><pre class="prompt">Freeze the imitation policy. Train a small PPO actor that, each action chunk, adds a bounded joint correction (a few degrees) and a Bernoulli "release now" decision; reward reach, lift, carry over the bowl, release inside the bowl footprint and the strict success, and penalise knocking the bowl. Batch many environments per object. Keep training, development and sealed evaluation seed ranges disjoint and assert it in code. Evaluate paired: base and base+residual on identical layouts and identical policy noise, with videos and strips.</pre><button class="copy" type="button">Copy</button></div>
+        </div></details>
       </article>
     </section>
 

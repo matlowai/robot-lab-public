@@ -1,5 +1,5 @@
 window.REEL_CHAPTERS = {
-  "duration": 60.438,
+  "duration": 92.888,
   "chapters": [
     {
       "t": 0,
@@ -31,10 +31,30 @@ window.REEL_CHAPTERS = {
     },
     {
       "t": 50.433,
+      "label": "No release"
+    },
+    {
+      "t": 56.923,
+      "label": "Let go"
+    },
+    {
+      "t": 63.413,
+      "label": "RL gate"
+    },
+    {
+      "t": 70.103,
+      "label": "Checker"
+    },
+    {
+      "t": 76.593,
+      "label": "Fine-tune"
+    },
+    {
+      "t": 82.883,
       "label": "Imagination"
     },
     {
-      "t": 55.838,
+      "t": 88.288,
       "label": "Close"
     }
   ],
@@ -65,7 +85,32 @@ window.REEL_CHAPTERS = {
       "why": "All seven successes the detector reported overnight were fake; with the jaw pre-opened, one of six attempts was a genuine grasp, lift, carry and place."
     },
     {
-      "t": 52.913,
+      "t": 55.573,
+      "title": "It never saw itself let go",
+      "why": "In 48 of the 59 night-1 attempts where it lifted the object but did not place it, the policy never commanded the gripper open; the demo recorder had reset the scene the instant the object landed, so a typical demo held one release frame in about 145."
+    },
+    {
+      "t": 62.163,
+      "title": "Fix the data, not the model",
+      "why": "Night 2 kept recording through release and retreat (a median of 42 release frames in each of 862 demos) and weighted gripper open/close frames 5× in the loss: 73 of 144 strict real places, 12 of 48 on objects it never trained on."
+    },
+    {
+      "t": 68.753,
+      "title": "A learned release gate",
+      "why": "On sealed test seeds never used in training, with identical layouts for both, the night-1 model alone made 58 of 465 strict places on training objects and 22 of 236 on objects it never trained on; with the residual RL gate on top, 382 of 465 and 122 of 236."
+    },
+    {
+      "t": 75.143,
+      "title": "Check it after it settles",
+      "why": "On 95 end-of-attempt frames scored against the simulator’s ground truth, Gemma 4 12B was right 94.7% of the time (5 false “done” in 50 failures) and Qwen 3.8 27B 97.9% (1 in 50), with the real places photographed after the arm had released, retreated and the scene had settled."
+    },
+    {
+      "t": 81.233,
+      "title": "One error traded for another",
+      "why": "A 4-bit QLoRA fine-tune of Gemma cut false “done” answers on settled frames from 12 to 3 of 50, but it now misses 41 of 45 real places photographed at the instant of release (base: 15) and 9 of 12 on objects it never trained on (base: 3), so it is not deployable yet."
+    },
+    {
+      "t": 85.363,
       "title": "It imagines the next two seconds",
       "why": "Alongside its next moves the model predicts video of what it expects to see; that video is usually thrown away, but it shows what the model thinks will happen."
     }

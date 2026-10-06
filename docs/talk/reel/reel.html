@@ -68,6 +68,15 @@ const TIMELINE = {
     real:   '../media/arm_first_success.mp4',
     droidA: 'droid_smooth.mp4',     // DROID clip, slowed to 0.75x with motion interpolation (see README)
     droidB: 'droid_smooth.mp4',     // second copy, for the crossfade at the loop point
+    hold:   '../media/arm_gr00t_never_lets_go.mp4',      // GR00T night 1, gr00t_final blue block ep 0 (20 s, never releases)
+    n2mug:  '../media/arm_gr00t_let_go_mug.mp4',          // GR00T night 2, gr00t_final mug ep 4 (strict)
+    n2box:  '../media/arm_gr00t_let_go_cracker_box.mp4',  // GR00T night 2, gr00t_final cracker box ep 5 (strict, held-out object)
+    rlBase: '../media/arm_gr00t_rl_base_cracker_box.mp4', // residual-RL sealed eval, base arm, cracker box wave 0 env 2 (first 8 s)
+    rlGate: '../media/arm_gr00t_rl_gate_cracker_box.mp4', // same layout + GR00T noise, RL arm (strict, rested)
+  },
+  images: {
+    chkOk:  '../media/arm_gr00t_check_settled.jpg',  // verifier set v2: expert demo mug ep 459, final settled frame (sim: in bowl)
+    chkBad: '../media/arm_gr00t_check_held.jpg',     // verifier set v2: night-1 gr00t_final mug ep 4, final frame (sim: not placed)
   },
   // chapter line along the bottom edge: one segment per scene (empty label = unlabeled segment)
   chapters: { show: 1.2, y: 1046 },
@@ -89,6 +98,19 @@ const TIMELINE = {
     { id: 'arm',         chapter: 'Real or fake', len: 4.8, beats: { stampFake: 0.5, stampReal: 0.8, strike: 1.8, real: 3.1 },
       stop: { at: 3.7, hold: 1.3, title: 'Real or fake?', why: 'All seven successes the detector reported overnight were fake; with the jaw pre-opened, one of six attempts was a genuine grasp, lift, carry and place.' },
       clips: [{ video: 'fake', from: 0, loop: 3.5, fps: 30 }, { video: 'real', from: 3, fps: 30 }] },
+    { id: 'grip',        chapter: 'No release', len: 5.6, beats: { bar: [0.6, 1.4], release: 1.5, caption: 1.8, n1: 2.6, n2: 3.1, lesson: 3.7 },
+      clips: [{ video: 'hold', map: 'lapse', pre: 3.0, speed: 6, fps: 30 }],
+      stop: { at: 4.3, hold: 1.4, title: 'It never saw itself let go', why: 'In 48 of the 59 night-1 attempts where it lifted the object but did not place it, the policy never commanded the gripper open; the demo recorder had reset the scene the instant the object landed, so a typical demo held one release frame in about 145.' } },
+    { id: 'letgo',       chapter: 'Let go', len: 5.6, beats: { sub: 0.4, labels: 0.8, old: 1.2, strike: 1.8, count: [1.9, 2.9], chips: 3.1, lesson: 3.6 },
+      clips: [{ video: 'n2mug', from: -0.25, rate: 1.25, fps: 30 }, { video: 'n2box', from: -0.25, rate: 1.25, fps: 30 }],
+      stop: { at: 4.4, hold: 1.4, title: 'Fix the data, not the model', why: 'Night 2 kept recording through release and retreat (a median of 42 release frames in each of 862 demos) and weighted gripper open/close frames 5× in the loss: 73 of 144 strict real places, 12 of 48 on objects it never trained on.' } },
+    { id: 'rl',          chapter: 'RL gate', len: 5.8, beats: { sub: 0.4, labels: 0.8, row1: 2.6, row2: 3.2 },
+      clips: [{ video: 'rlBase', from: -0.2, rate: 1.25, fps: 30 }, { video: 'rlGate', from: -0.2, rate: 1.25, fps: 30 }],
+      stop: { at: 4.5, hold: 1.4, title: 'A learned release gate', why: 'On sealed test seeds never used in training, with identical layouts for both, the night-1 model alone made 58 of 465 strict places on training objects and 22 of 236 on objects it never trained on; with the residual RL gate on top, 382 of 465 and 122 of 236.' } },
+    { id: 'checker',     chapter: 'Checker', len: 5.6, beats: { cardA: 0.4, cardB: 0.8, ansA: 1.3, ansB: 1.7, table: 1.2, rowG: 1.6, rowQ: 2.0, note: 2.6, lesson: 3.3 },
+      stop: { at: 4.2, hold: 1.4, title: 'Check it after it settles', why: 'On 95 end-of-attempt frames scored against the simulator’s ground truth, Gemma 4 12B was right 94.7% of the time (5 false “done” in 50 failures) and Qwen 3.8 27B 97.9% (1 in 50), with the real places photographed after the arm had released, retreated and the scene had settled.' } },
+    { id: 'tuned',       chapter: 'Fine-tune', len: 5.4, beats: { row1: 0.2, row2: 1.2, row3: 1.9, flash: 1.2, lesson: 3.0 },
+      stop: { at: 3.8, hold: 1.4, title: 'One error traded for another', why: 'A 4-bit QLoRA fine-tune of Gemma cut false “done” answers on settled frames from 12 to 3 of 50, but it now misses 41 of 45 real places photographed at the instant of release (base: 15) and 9 of 12 on objects it never trained on (base: 3), so it is not deployable yet.' } },
     { id: 'imagine',     chapter: 'Imagination', len: 4.6, clips: [{ video: 'droidA', pair: 'droidB', len: 2.72, xfade: 0.35, fps: 30 }],
       stop: { at: 1.7, hold: 1.3, title: 'It imagines the next two seconds', why: 'Alongside its next moves the model predicts video of what it expects to see; that video is usually thrown away, but it shows what the model thinks will happen.' } },
     { id: 'close',       chapter: 'Close', len: 4.6 },
@@ -130,6 +152,25 @@ const TIMELINE = {
     { scene: 'arm', at: 0.8, type: 'stamp' },
     { scene: 'arm', at: 1.8, type: 'hit', gain: 0.8 },
     { scene: 'arm', at: 3.1, type: 'chime', gain: 0.45 },
+    { scene: 'grip', at: 0, type: 'whoosh' },
+    { scene: 'grip', at: 1.5, type: 'tick', gain: 0.7 },           // the one release frame lights up
+    { scene: 'grip', at: 2.6, type: 'stamp', gain: 0.6 },
+    { scene: 'grip', at: 3.1, type: 'hit', gain: 0.7 },
+    { scene: 'letgo', at: 0, type: 'whoosh' },
+    { scene: 'letgo', at: 1.8, type: 'tick', gain: 0.6 },
+    { scene: 'letgo', at: 1.9, type: 'riser', length: 1.0, gain: 0.5 },
+    { scene: 'letgo', at: 2.9, type: 'chime', gain: 0.5 },
+    { scene: 'rl', at: 0, type: 'whoosh' },
+    { scene: 'rl', at: 2.6, type: 'riser', length: 0.9, gain: 0.45 },
+    { scene: 'rl', at: 3.5, type: 'chime', gain: 0.5 },
+    { scene: 'checker', at: 0, type: 'whoosh' },
+    { scene: 'checker', at: 1.3, type: 'tick', gain: 0.6 },
+    { scene: 'checker', at: 1.7, type: 'hit', gain: 0.5 },         // the false "done"
+    { scene: 'checker', at: 3.3, type: 'stamp', gain: 0.5 },
+    { scene: 'tuned', at: 0, type: 'whoosh' },
+    { scene: 'tuned', at: 0.2, type: 'tick', gain: 0.6 },
+    { scene: 'tuned', at: 1.2, type: 'hit', gain: 0.9 },           // the regression
+    { scene: 'tuned', at: 3.0, type: 'stamp', gain: 0.6 },
     { scene: 'imagine', at: 0, type: 'whoosh' },
     { scene: 'close', at: 0, type: 'whoosh', gain: 0.7 },
     { scene: 'close', at: 0.2, type: 'chime', gain: 0.8 },
@@ -204,6 +245,71 @@ const COPY = {
     line1: 'Seven successes. All seven fake.',
     line2: '1 of 6, real.',
   },
+  // GR00T night 1: overnight-gr00t/full-20261004-2334 (MORNING_REPORT.md, FAILURE_ANALYSIS.md, eval/gr00t_final/diag_blue_block_ep00.npz)
+  grip: {
+    eyebrow: 'SWAPPED IN · NVIDIA GR00T N1.7 · 3B · FINE-TUNED ON OUR SIM DEMOS',
+    latency: 'plans in ~120 ms · FLUX 3 Action took 0.9–1.2 s',
+    title: 'It picks it up. It never lets go.',
+    jawLabel: 'JAW COMMAND · BLUE BLOCK · EPISODE 0',
+    openLabel: 'open > 30',
+    closed: 'jaw closed',
+    barLabel: 'ONE TRAINING DEMO, FRAME BY FRAME',
+    frames: 145, framesLabel: '~145 frames',
+    releaseLabel: '1 release frame (median)',
+    caption: 'The recorder reset the scene the instant the object landed, so the demos almost never show the gripper opening.',
+    n1: ['8 / 72', 'real places, night 1'],
+    n2: ['48 / 59', 'lifted, not placed: never opened the jaw'],
+    n2sub: 'both checkpoints',
+    lesson: 'It never saw itself let go.',
+  },
+  // GR00T night 2: overnight-gr00t-v2/full-20261005-2209 (MORNING_REPORT.md)
+  letgo: {
+    eyebrow: 'NIGHT 2 · SAME MODEL · NEW DEMOS',
+    title: 'Keep recording after it lets go.',
+    sub: 'Demos run through release and retreat: median 42 release frames (862 demos) · 5× loss weight on gripper open/close',
+    labels: [['TRAINING OBJECT · MUG', '20 / 24', 'sensor'], ['NEVER TRAINED ON · CRACKER BOX', '5 / 24', 'hazard']],
+    speed: '1.25× speed',
+    old: '8 / 72', oldLabel: 'night 1',
+    now: [73, 144], nowLabel: 'night 2 · strict real places',
+    chips: [['training objects', '61 / 96'], ['never trained on', '12 / 48'], ['halfway checkpoint', '17 / 96']],
+    chipNote: 'halfway, the jaw opened too often; it recovered by the end',
+  },
+  // Residual RL on the frozen night-1 GR00T: gr00t-rl/runs/rl-n1base-20261006-0258/REPORT.md (sealed paired eval) + code/DESIGN.md
+  rl: {
+    eyebrow: 'RESIDUAL RL · NIGHT-1 GR00T FROZEN · SEALED TEST SEEDS',
+    title: 'Or learn when to let go.',
+    sub: 'A small PPO policy on top adds a ≤ 4° arm correction and a “release now” gate',
+    labels: [['NIGHT-1 GR00T ALONE', 'alarm'], ['+ RL RELEASE GATE', 'hazard']],
+    same: 'same layout, same GR00T noise · cracker box, never trained on · 1.25× speed',
+    rows: [{ label: 'Training objects', of: 465, base: 58, rl: 382 }, { label: 'Never trained on', of: 236, base: 22, rl: 122 }],
+    baseTag: 'alone', rlTag: '+ gate',
+  },
+  // Served-VLM measurement: vlm-verifier-test/log_v2_*.txt, log_gemma-4-12b_placed.txt, set_v2.json, results_*_placed_v2.json
+  checker: {
+    eyebrow: 'MEASUREMENT · DID IT REALLY LAND?',
+    title: 'Ask a local VLM. Check it against the simulator.',
+    question: 'Has the mug been placed in the bowl?',
+    cards: [
+      { label: 'RELEASED, RETREATED, SETTLED', truth: 'SIM: PLACED', truthColor: 'sensor', answers: [['Gemma', 'yes', true], ['Qwen', 'yes', true]] },
+      { label: 'STILL GRIPPED AT THE RIM', truth: 'SIM: NOT PLACED', truthColor: 'alarm', answers: [['Gemma', 'yes', false], ['Qwen', 'no', true]] },
+    ],
+    tableHead: '95 END-OF-ATTEMPT FRAMES · 45 REAL PLACES · 50 FAILURES',
+    cols: ['right', 'false “done”', 'per check'],
+    rows: [['Gemma 4 12B', '94.7%', '5 / 50', '0.64 s'], ['Qwen 3.8 27B', '97.9%', '1 / 50', '1.9 s']],
+    note: 'Real places photographed after release, retreat and settle. Photographed at the instant of release, Gemma missed 24 of 45.',
+    lesson: 'Look after it settles.',
+  },
+  // Gemma QLoRA: verifier-ft/RESULTS_TABLES.md + AGENT_REPORT_run1.md ('placed' prompt, run1 arm A vs base, same harness)
+  tuned: {
+    eyebrow: 'FINE-TUNE · GEMMA 4 12B · 4-BIT QLoRA (UNSLOTH)',
+    footnote: 'base re-scored in the fine-tune harness · one training seed',
+    groups: [
+      { title: 'Says “done” on a failed attempt (settled frames)', max: 50, rows: [['Base', 12, 'muted'], ['Fine-tuned', 3, 'sensor']] },
+      { title: 'Misses a real place photographed at release', max: 45, rows: [['Base', 15, 'muted'], ['Fine-tuned', 41, 'alarm']] },
+      { title: 'Misses a real place on objects it never trained on', max: 12, rows: [['Base', 3, 'muted'], ['Fine-tuned', 9, 'alarm']] },
+    ],
+    lesson: 'One error traded for another.',
+  },
   imagine: {
     eyebrow: 'WORLD MODEL',
     title: ['It imagines', 'the next', 'two seconds.'],
@@ -214,7 +320,7 @@ const COPY = {
   close: {
     line1: 'Evaluation', line2: 'is the product.',
     sub: 'Simulation · Reinforcement learning · World models',
-    credit: 'Sim: NVIDIA Isaac Sim / Isaac Lab · Model: FLUX 3 Action, Black Forest Labs · Data: DROID (CC BY 4.0)',
+    credit: 'Sim: NVIDIA Isaac Sim / Isaac Lab · Models: FLUX 3 Action (Black Forest Labs), NVIDIA GR00T N1.7, Gemma 4 12B, Qwen 3.8 27B · Data: DROID (CC BY 4.0)',
   },
 };
 
@@ -354,7 +460,11 @@ for (const [id, src] of Object.entries(TIMELINE.videos)) {
   v.src = src; v.muted = true; v.playsInline = true; v.preload = 'auto';
   document.body.appendChild(v); VIDS[id] = v;
 }
+const IMGS = {};
+for (const [id, src] of Object.entries(TIMELINE.images || {})) { const im = new Image(); im.src = src; IMGS[id] = im; }
 const vdur = id => { const v = VIDS[id]; return v && isFinite(v.duration) ? v.duration : 1e9; };
+// time-lapse clip: real time for the first `pre` seconds, then `speed`× (video seconds = sim seconds)
+const lapseT = (clip, u) => (u < clip.pre ? u : clip.pre + (u - clip.pre) * clip.speed);
 // what each clip shows at scene time u: a list of { id, ct (video seconds), a (alpha) }
 function clipDraws(clip, u) {
   const mid = clip.fps ? 0.5 / clip.fps : 0;         // aim at the middle of a frame so no frame repeats
@@ -365,7 +475,8 @@ function clipDraws(clip, u) {
     if (k > 0 && local < clip.xfade) out.push({ id: ids[(k + 1) % 2], ct: local + P + mid, a: 1 - easeInOut(local / clip.xfade) });
     return out;
   }
-  let ct = clip.from + u;
+  if (clip.map === 'lapse') return [{ id: clip.video, ct: clamp(lapseT(clip, u) + mid, 0, vdur(clip.video) - 0.06), a: 1 }];
+  let ct = clip.from + u * (clip.rate || 1);
   if (clip.loop) ct = clip.from + (u % clip.loop);
   return [{ id: clip.video, ct: clamp(ct + mid, 0, vdur(clip.video) - 0.04), a: 1 }];
 }
@@ -777,6 +888,243 @@ function drawArm(u) {
   if (glow > 0) { ctx.save(); ctx.strokeStyle = rgba('hazard', easeOut(glow) * (0.75 + 0.25 * Math.sin(u * 5))); ctx.lineWidth = 6; rr(xs[1] - 6, py - 6, pw + 12, ph + 12, 22); ctx.stroke(); ctx.restore(); }
 }
 
+/* --- shared bits for the GR00T scenes --- */
+function clipPanel(clip, u, x, y, w, h) {
+  rr(x, y, w, h, 16); ctx.save(); ctx.clip();
+  for (const d of clipDraws(clip, u)) drawVideo(d.id, 0, 0, 512, 256, x, y, w, h);
+  ctx.restore();
+  rr(x, y, w, h, 16); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke();
+}
+function mark(x, y, ok, s = 1) {          // a drawn tick or cross (no glyph dependency)
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = ok ? C.sensor : C.alarm; ctx.beginPath();
+  if (ok) { ctx.moveTo(-12, 0); ctx.lineTo(-3, 10); ctx.lineTo(14, -12); }
+  else { ctx.moveTo(-11, -11); ctx.lineTo(11, 11); ctx.moveTo(11, -11); ctx.lineTo(-11, 11); }
+  ctx.stroke(); ctx.restore();
+}
+function slamText(str, x, y, d, o) {     // scale-in with overshoot, like the race ranks
+  const k = prog(d, 0, 0.32); if (k <= 0) return 0;
+  const s = lerp(1.7, 1, easeBack(k));
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  const w = text(str, 0, 0, { ...o, alpha: clamp(k * 3) }); ctx.restore(); return w;
+}
+
+/* ===== scene: grip (GR00T night 1: lifts, never lets go) ===== */
+// Commanded jaw (gripper units; "open" = above 30) every 5 sim steps (1/6 s) over the 20 s episode:
+// overnight-gr00t/full-20261004-2334/eval/gr00t_final/diag_blue_block_ep00.npz, cmd_units[::5, 5]
+const JAW = [50.0, 50.0, 50.0, 50.0, 50.0, 49.8, 49.8, 49.2, 9.2, 9.3, 9.3, 9.1, 9.1, 9.1, 9.1, 9.1, 9.7, 9.3, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.3, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.2, 9.1, 9.3, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.2, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.1, 9.2, 9.1, 9.1, 9.1, 9.1, 9.3, 9.1];
+function drawGrip(u) {
+  const c = COPY.grip, B = SC.grip.beats, clip = SC.grip.clips[0];
+  grid(0.2);
+  eyebrow(c.eyebrow, 120, 120, easeOut(prog(u, 0, 0.4)));
+  text(c.latency, 1800, 172, { kind: 'mono', size: 22, color: 'muted', align: 'right', alpha: easeOut(prog(u, 0.4, 0.8)) });
+  kinetic(c.title, 120, 200, u, 0.05, { size: 72, weight: 800 });
+  const px = 120, py = 250, pw = 800, ph = 400, T = Math.min(20, lapseT(clip, u)), fast = u >= clip.pre;
+  clipPanel(clip, u, px, py, pw, ph);
+  // sim clock on the clip; it speeds up once the block is over the bowl
+  rr(px + 16, py + 16, fast ? 186 : 112, 52, 10); ctx.fillStyle = rgba('ink', 0.82); ctx.fill();
+  text(mss(T), px + 32, py + 54, { kind: 'mono', size: 30, weight: 600 });
+  if (fast) text(`${clip.speed}×`, px + 128, py + 54, { kind: 'mono', size: 26, weight: 600, color: 'hazard' });
+  // the real jaw command for this episode, drawn in step with the clip
+  const JX0 = px, JX1 = px + pw, JY0 = 826, JY1 = 716, jx = s => lerp(JX0, JX1, s / 20), jy = v => lerp(JY0, JY1, v / 55);
+  ctx.save(); ctx.globalAlpha *= easeOut(prog(u, 0.2, 0.6));
+  text(c.jawLabel, JX0, 698, { kind: 'mono', size: 20, weight: 600, color: 'muted', spacing: 2 });
+  ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(JX0, JY0 + 0.5); ctx.lineTo(JX1, JY0 + 0.5); ctx.stroke();
+  ctx.setLineDash([10, 8]); ctx.strokeStyle = rgba('sensor', 0.8); ctx.beginPath(); ctx.moveTo(JX0, jy(30)); ctx.lineTo(JX1, jy(30)); ctx.stroke(); ctx.setLineDash([]);
+  text(c.openLabel, JX1, jy(30) - 10, { kind: 'mono', size: 20, color: 'sensor', align: 'right' });
+  text('0 s', JX0, JY0 + 28, { kind: 'mono', size: 18, color: 'muted' });
+  text('20 s', JX1, JY0 + 28, { kind: 'mono', size: 18, color: 'muted', align: 'right' });
+  const n = Math.min(JAW.length - 1, Math.floor(T * 6));
+  ctx.beginPath(); for (let i = 0; i <= n; i++) { const X = jx(i / 6), Y = jy(JAW[i]); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+  ctx.strokeStyle = C.hazard; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
+  const hx = jx(n / 6), hy = jy(JAW[n]);
+  ctx.beginPath(); ctx.arc(hx, hy, 7, 0, Math.PI * 2); ctx.fillStyle = C.hazard; ctx.fill();
+  if (T > 2) text(c.closed, Math.min(hx + 16, JX1 - 130), hy - 14, { kind: 'mono', size: 20, weight: 600, color: 'hazard' });
+  ctx.restore();
+  // right: one training demo as a strip of frames; the release is the very last one
+  const RX = 1000, RW = 800, BY = 330, BH = 84, nF = c.frames, step = RW / nF, bk = prog(u, B.bar[0], B.bar[1]);
+  text(c.barLabel, RX, 300, { kind: 'mono', size: 22, weight: 600, color: 'muted', spacing: 2, alpha: easeOut(prog(u, B.bar[0] - 0.2, B.bar[0] + 0.2)) });
+  const rel = prog(u, B.release, B.release + 0.3);
+  for (let i = 0; i < nF; i++) {
+    if (i / nF > bk) break;
+    const last = i === nF - 1, lit = last && rel > 0;
+    const extra = lit ? 14 * easeBack(rel) : 0;
+    ctx.fillStyle = lit ? C.hazard : rgba('muted', 0.42);
+    ctx.fillRect(RX + i * step, BY - extra, Math.max(2, step - 2), BH + extra * 2);
+  }
+  if (rel > 0) {
+    const lx = RX + RW - step / 2, ph2 = (u * 1.4) % 1;
+    ctx.beginPath(); ctx.arc(lx, BY + BH / 2, 14 + 26 * ph2, 0, Math.PI * 2); ctx.strokeStyle = rgba('hazard', 0.6 * (1 - ph2)); ctx.lineWidth = 3; ctx.stroke();
+    text(c.releaseLabel, RX + RW, BY + BH + 50, { kind: 'mono', size: 24, weight: 600, color: 'hazard', align: 'right', alpha: easeOut(rel) });
+  }
+  text(c.framesLabel, RX, BY + BH + 50, { kind: 'mono', size: 24, color: 'muted', alpha: easeOut(prog(u, B.bar[1] - 0.2, B.bar[1] + 0.2)) });
+  ctx.save(); ctx.globalAlpha *= easeOut(prog(u, B.caption, B.caption + 0.4));
+  wrap(c.caption, RX, 532, RW, 42, { size: 30, color: 'paper' }); ctx.restore();
+  // the score, and the pattern behind it
+  slamText(c.n1[0], RX, 728, u - B.n1, { kind: 'mono', size: 72, weight: 600, color: 'hazard' });
+  text(c.n1[1], RX, 772, { size: 26, color: 'muted', alpha: easeOut(prog(u, B.n1 + 0.1, B.n1 + 0.4)) });
+  slamText(c.n2[0], RX + 380, 728, u - B.n2, { kind: 'mono', size: 72, weight: 600, color: 'alarm' });
+  ctx.save(); ctx.globalAlpha *= easeOut(prog(u, B.n2 + 0.1, B.n2 + 0.4));
+  wrap(c.n2[1], RX + 380, 772, 420, 34, { size: 26, color: 'muted' });
+  text(c.n2sub, RX + 380, 846, { kind: 'mono', size: 20, color: 'muted' }); ctx.restore();
+  kinetic(c.lesson, 120, 960, u, B.lesson, { size: 64, weight: 900, color: 'hazard' });
+}
+
+/* ===== scene: letgo (GR00T night 2: release-tail demos) ===== */
+function drawLetGo(u) {
+  const c = COPY.letgo, B = SC.letgo.beats;
+  grid(0.2);
+  eyebrow(c.eyebrow, 120, 120, easeOut(prog(u, 0, 0.4)));
+  kinetic(c.title, 120, 200, u, 0.05, { size: 72, weight: 800 });
+  text(c.sub, 120, 254, { size: 28, color: 'muted', alpha: easeOut(prog(u, B.sub, B.sub + 0.4)) });
+  const pw = 780, ph = 390, py = 300, xs = [120, 1020];
+  SC.letgo.clips.forEach((clip, i) => {
+    clipPanel(clip, u, xs[i], py, pw, ph);
+    const [lab, score, colr] = c.labels[i];
+    const done = clip.from + u * clip.rate >= vdur(clip.video) - 0.05, dk = done ? 1 : 0;
+    if (dk) { ctx.save(); ctx.strokeStyle = rgba(colr, 0.75 + 0.25 * Math.sin(u * 5)); ctx.lineWidth = 6; rr(xs[i] - 6, py - 6, pw + 12, ph + 12, 22); ctx.stroke(); ctx.restore(); }
+    const la = easeOut(prog(u, B.labels + i * 0.15, B.labels + 0.4 + i * 0.15));
+    text(lab, xs[i], py + ph + 46, { kind: 'mono', size: 24, weight: 600, color: colr, spacing: 2, alpha: la });
+    text(score, xs[i] + pw, py + ph + 46, { kind: 'mono', size: 30, weight: 600, align: 'right', alpha: la });
+  });
+  text(c.speed, xs[1] + pw, py - 16, { kind: 'mono', size: 18, color: 'muted', align: 'right', alpha: easeOut(prog(u, 0.3, 0.7)) });
+  // 8/72 struck through, then the night-2 count runs up
+  const ok = easeOut(prog(u, B.old, B.old + 0.3)), CY = 866;
+  const ow = text(c.old, 120, CY, { kind: 'mono', size: 72, weight: 600, color: 'muted', alpha: ok });
+  text(c.oldLabel, 120, CY + 44, { kind: 'mono', size: 22, color: 'muted', alpha: ok });
+  const sk = easeOut(prog(u, B.strike, B.strike + 0.25));
+  if (sk > 0) { ctx.save(); ctx.strokeStyle = C.alarm; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(110, CY - 24); ctx.lineTo(110 + (ow + 20) * sk, CY - 24); ctx.stroke(); ctx.restore();
+    text('→', 120 + ow + 36, CY - 4, { kind: 'mono', size: 64, color: 'muted', alpha: sk }); }
+  const ck = prog(u, B.count[0], B.count[1]);
+  if (ck > 0) {
+    const NX = 120 + ow + 130, v = Math.round(c.now[0] * easeOut(ck));
+    text(`${v} / ${c.now[1]}`, NX, CY + 6, { kind: 'mono', size: 96, weight: 600, color: 'hazard', alpha: clamp(ck * 4) });
+    text(c.nowLabel, NX, CY + 44, { kind: 'mono', size: 22, color: 'hazard', alpha: clamp(ck * 4) });
+  }
+  c.chips.forEach(([lab, val], i) => {
+    const a = easeOut(prog(u, B.chips + i * 0.12, B.chips + 0.4 + i * 0.12)), y = 812 + i * 50;
+    text(lab, 1020, y, { size: 28, color: 'muted', alpha: a });
+    text(val, 1360, y, { kind: 'mono', size: 28, weight: 600, alpha: a });
+  });
+  text(c.chipNote, 1020, 952, { kind: 'mono', size: 20, color: 'muted', alpha: easeOut(prog(u, B.chips + 0.36, B.chips + 0.76)) });
+}
+
+/* ===== scene: rl (residual RL release gate on the frozen night-1 policy; sealed paired eval) ===== */
+function drawRL(u) {
+  const c = COPY.rl, B = SC.rl.beats;
+  grid(0.2);
+  eyebrow(c.eyebrow, 120, 120, easeOut(prog(u, 0, 0.4)));
+  kinetic(c.title, 120, 200, u, 0.05, { size: 72, weight: 800 });
+  text(c.sub, 120, 254, { size: 28, color: 'muted', alpha: easeOut(prog(u, B.sub, B.sub + 0.4)) });
+  const pw = 760, ph = 380, py = 300, xs = [120, 1040];
+  SC.rl.clips.forEach((clip, i) => {
+    clipPanel(clip, u, xs[i], py, pw, ph);
+    const [lab, colr] = c.labels[i];
+    if (i === 1 && clip.from + u * clip.rate >= vdur(clip.video) - 0.05) {
+      ctx.save(); ctx.strokeStyle = rgba('hazard', 0.75 + 0.25 * Math.sin(u * 5)); ctx.lineWidth = 6; rr(xs[i] - 6, py - 6, pw + 12, ph + 12, 22); ctx.stroke(); ctx.restore();
+    }
+    text(lab, xs[i], py + ph + 44, { kind: 'mono', size: 24, weight: 600, color: colr, spacing: 2, alpha: easeOut(prog(u, B.labels + i * 0.15, B.labels + 0.4 + i * 0.15)) });
+  });
+  text(c.same, xs[1] + pw, py - 16, { kind: 'mono', size: 18, color: 'muted', align: 'right', alpha: easeOut(prog(u, 0.3, 0.7)) });
+  // sealed eval: strict places, base vs base + gate, per split
+  const BX = 560, BW = 1000;
+  c.rows.forEach((r, i) => {
+    const t0 = i ? B.row2 : B.row1, y0 = 774 + i * 112, a = easeOut(prog(u, t0 - 0.1, t0 + 0.3));
+    if (a <= 0) return;
+    ctx.save(); ctx.globalAlpha *= a;
+    text(r.label, 120, y0 + 40, { kind: 'display', size: 36, weight: 800 });
+    [[r.base, 'muted', c.baseTag, 0], [r.rl, 'hazard', c.rlTag, 1]].forEach(([v, colr, tag, j]) => {
+      const by = y0 + j * 34, bk = easeOut(prog(u, t0 + j * 0.2, t0 + 0.8 + j * 0.2));
+      rr(BX, by, BW, 24, 6); ctx.fillStyle = rgba('line', 0.6); ctx.fill();
+      const bw = Math.max(6, BW * (v / r.of) * bk);
+      rr(BX, by, bw, 24, 6); ctx.fillStyle = col(colr); ctx.fill();
+      text(`${Math.round(v * bk)} / ${r.of}`, BX + BW + 20, by + 21, { kind: 'mono', size: 26, weight: 600, color: j ? 'hazard' : 'paper' });
+      text(tag, BX - 16, by + 19, { kind: 'mono', size: 18, color: 'muted', align: 'right' });
+    });
+    ctx.restore();
+  });
+}
+
+/* ===== scene: checker (a local VLM's answers vs the simulator's ground truth) ===== */
+function drawChecker(u) {
+  const c = COPY.checker, B = SC.checker.beats;
+  grid(0.2);
+  eyebrow(c.eyebrow, 120, 120, easeOut(prog(u, 0, 0.4)));
+  kinetic(c.title, 120, 200, u, 0.05, { size: 64, weight: 800 });
+  text(`Asked: “${c.question}”`, 120, 258, { size: 30, weight: 600, color: 'sensor', alpha: easeOut(prog(u, 0.3, 0.7)) });
+  const iw = 560, ih = 280, ix = 120, iys = [340, 690];
+  c.cards.forEach((cd, i) => {
+    const t0 = i ? B.cardB : B.cardA, k = easeOut(prog(u, t0, t0 + 0.4)), y = iys[i] + (1 - k) * 30;
+    if (k <= 0) return;
+    ctx.save(); ctx.globalAlpha *= k;
+    text(cd.label, ix, y - 14, { kind: 'mono', size: 20, weight: 600, color: 'muted', spacing: 2 });
+    const im = IMGS[i ? 'chkBad' : 'chkOk'];
+    rr(ix, y, iw, ih, 12); ctx.save(); ctx.clip();
+    if (im.complete && im.naturalWidth) ctx.drawImage(im, ix, y, iw, ih); else { ctx.fillStyle = C.panel; ctx.fillRect(ix, y, iw, ih); }
+    ctx.restore();
+    rr(ix, y, iw, ih, 12); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke();
+    const tw = measure(cd.truth, 'mono', 20, 600, 2);
+    rr(ix + 12, y + ih - 52, tw + 28, 40, 8); ctx.fillStyle = rgba('ink', 0.88); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = col(cd.truthColor); ctx.stroke();
+    text(cd.truth, ix + 26, y + ih - 25, { kind: 'mono', size: 20, weight: 600, color: cd.truthColor, spacing: 2 });
+    ctx.restore();
+    const ta = i ? B.ansB : B.ansA;
+    cd.answers.forEach(([who, ans, right], j) => {
+      const ak = prog(u, ta + j * 0.18, ta + j * 0.18 + 0.3); if (ak <= 0) return;
+      const ax = ix + iw + 36, ay = y + 50 + j * 116;
+      text(who, ax, ay, { kind: 'mono', size: 22, color: 'muted', alpha: clamp(ak * 2) });
+      const w = slamText(`“${ans}”`, ax, ay + 44, ak * 0.32, { kind: 'display', size: 40, weight: 800, color: right ? 'paper' : 'alarm' });
+      mark(ax + w + 30, ay + 30, right, clamp(ak * 2));
+      if (!right) text('false “done”', ax, ay + 76, { kind: 'mono', size: 18, weight: 600, color: 'alarm', alpha: clamp(ak * 2) });
+    });
+  });
+  // the measured table
+  const TX = 980, cols = [1440, 1630, 1800], ta = easeOut(prog(u, B.table, B.table + 0.4));
+  text(c.tableHead, TX, 372, { kind: 'mono', size: 20, weight: 600, color: 'muted', spacing: 1, alpha: ta });
+  c.cols.forEach((h, j) => text(h, cols[j], 424, { kind: 'mono', size: 20, color: 'muted', align: 'right', alpha: ta }));
+  ctx.save(); ctx.globalAlpha *= ta; ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(TX, 444); ctx.lineTo(1800, 444); ctx.stroke(); ctx.restore();
+  c.rows.forEach(([name, acc, fd, lat], r) => {
+    const rk = easeOut(prog(u, r ? B.rowQ : B.rowG, (r ? B.rowQ : B.rowG) + 0.35)), y = 510 + r * 82;
+    ctx.save(); ctx.globalAlpha *= rk; ctx.translate((1 - rk) * 30, 0);
+    text(name, TX, y, { kind: 'display', size: 40, weight: 800 });
+    text(acc, cols[0], y, { kind: 'mono', size: 38, weight: 600, color: 'sensor', align: 'right' });
+    text(fd, cols[1], y, { kind: 'mono', size: 38, weight: 600, color: 'hazard', align: 'right' });
+    text(lat, cols[2], y, { kind: 'mono', size: 38, weight: 600, color: 'muted', align: 'right' });
+    ctx.restore();
+  });
+  ctx.save(); ctx.globalAlpha *= easeOut(prog(u, B.note, B.note + 0.4));
+  wrap(c.note, TX, 700, 820, 42, { size: 30, color: 'paper' }); ctx.restore();
+  kinetic(c.lesson, TX, 930, u, B.lesson, { size: 64, weight: 900, color: 'hazard' });
+}
+
+/* ===== scene: tuned (QLoRA fine-tune of the checker: base vs tuned, same harness) ===== */
+function drawTuned(u) {
+  const c = COPY.tuned, B = SC.tuned.beats;
+  grid(0.2);
+  eyebrow(c.eyebrow, 128, 140, easeOut(prog(u, 0, 0.3)));
+  text(c.footnote, 1792, 140, { kind: 'mono', size: 20, color: 'muted', align: 'right', alpha: easeOut(prog(u, 0.2, 0.6)) });
+  const BX = 640, BW = 860, starts = [B.row1, B.row2, B.row3], ys = [250, 490, 730];
+  const focus = [1 - 0.4 * easeOut(prog(u, B.row2, B.row2 + 0.4)), 1, 1];
+  c.groups.forEach((g, gi) => {
+    const t0 = starts[gi], gy = ys[gi], lit = easeOut(prog(u, t0 - 0.1, t0 + 0.25)), a = lerp(0.32, 1, lit) * focus[gi];
+    text(g.title, 128, gy, { kind: 'display', size: 44, weight: 800, alpha: a });
+    g.rows.forEach(([label, val, color], i) => {
+      const ry = gy + 40 + i * 62;
+      text(label, 128, ry + 36, { kind: 'mono', size: 28, color: 'muted', alpha: a });
+      rr(BX, ry, BW, 46, 8); ctx.fillStyle = rgba('line', 0.35 + 0.3 * lit); ctx.fill();
+      const bk = easeOut(prog(u, t0 + i * 0.15, t0 + 0.9 + i * 0.15));
+      if (bk <= 0) return;
+      const bw = Math.max(6, BW * (val / g.max) * bk);
+      ctx.save(); ctx.globalAlpha *= focus[gi];
+      rr(BX, ry, bw, 46, 8); ctx.fillStyle = col(color); ctx.fill();
+      text(`${Math.round(val * bk)} of ${g.max}`, BX + bw + 18, ry + 36, { kind: 'mono', size: 32, weight: 600 });
+      ctx.restore();
+    });
+  });
+  const fl = prog(u, B.flash, B.flash + 0.5);
+  if (fl > 0 && fl < 1) { ctx.fillStyle = rgba('alarm', 0.14 * (1 - fl)); ctx.fillRect(0, 0, W, H); }
+  kinetic(c.lesson, 128, 984, u, B.lesson, { size: 64, weight: 900, color: 'hazard' });
+}
+
 /* ===== scene: imagine ===== */
 function drawImagine(u) {
   const c = COPY.imagine;
@@ -813,7 +1161,8 @@ function drawClose(u) {
 }
 
 const DRAW = { plaza: drawPlaza, crowd: drawCrowd, worlds: drawWorlds, reward: drawReward, curves: drawCurves,
-               denominator: drawDenominator, arm: drawArm, imagine: drawImagine, close: drawClose };
+               denominator: drawDenominator, arm: drawArm, grip: drawGrip, letgo: drawLetGo, rl: drawRL, checker: drawChecker, tuned: drawTuned,
+               imagine: drawImagine, close: drawClose };
 
 // Each scene paints its own ground. The incoming scene crossfades in over the outgoing one with a small push;
 // every scene also pushes in slowly for its whole length, so nothing is ever perfectly still.
@@ -850,7 +1199,10 @@ function drawChapters(t) {
     const cur = t >= s.start && t < segEnd(i), past = t >= segEnd(i);
     rr(x0, Y, x1 - x0, 6, 3); ctx.fillStyle = past ? rgba('paper', 0.45) : rgba('line', 0.95); ctx.fill();
     if (cur) { const k = (t - s.start) / (segEnd(i) - s.start); rr(x0, Y, Math.max(6, (x1 - x0) * k), 6, 3); ctx.fillStyle = C.hazard; ctx.fill(); }
-    if (s.chapter) text(s.chapter, x0, Y - 12, { kind: 'mono', size: 17, weight: cur ? 600 : 400, color: cur ? 'hazard' : 'muted', alpha: cur ? 1 : 0.75 });
+    if (s.chapter) {                    // shrink a label that would run into the next one (short segments)
+      let fs = 17; while (fs > 12 && measure(s.chapter, 'mono', fs, 600) > x1 - x0 - 6) fs--;
+      text(s.chapter, x0, Y - 12, { kind: 'mono', size: fs, weight: cur ? 600 : 400, color: cur ? 'hazard' : 'muted', alpha: cur ? 1 : 0.75 });
+    }
   });
   TIMELINE.stops.forEach(st => {        // stop points: diamonds that pulse while their beat is held
     const on = t >= st.from && t < st.to, ph = on ? 0.5 + 0.5 * Math.sin((t - st.from) * 9) : 0, r = 6 + 3 * ph;
@@ -882,6 +1234,7 @@ window.reelReady = (async () => {
     .map(([k, w]) => document.fonts.load(font(k, 64, w)).catch(() => {}));
   await Promise.all(loads); await document.fonts.ready;
   await Promise.all(Object.values(VIDS).map(v => v.readyState >= 2 ? 0 : new Promise(r => { v.addEventListener('loadeddata', r, { once: true }); v.addEventListener('error', r, { once: true }); })));
+  await Promise.all(Object.values(IMGS).map(im => im.complete ? 0 : new Promise(r => { im.addEventListener('load', r, { once: true }); im.addEventListener('error', r, { once: true }); })));
   return true;
 })();
 

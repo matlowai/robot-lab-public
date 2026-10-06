@@ -42,6 +42,7 @@ packaged library.
 ## License
 
 Apache-2.0 for the code, course and talk text in this repository ([LICENSE](LICENSE), [NOTICE](NOTICE)),
-**except** the FLUX 3 Action media listed in [`docs/talk/MEDIA-LICENSE.md`](docs/talk/MEDIA-LICENSE.md), which
-are non-commercial (FLUX Kommunity License). Third-party software and model weights keep their own
+**except** the media listed in [`docs/talk/MEDIA-LICENSE.md`](docs/talk/MEDIA-LICENSE.md): FLUX 3 Action outputs
+(FLUX Kommunity License, non-commercial) and GR00T N1.7 rollouts (treated as non-commercial under the NVIDIA License
+shipped with the checkpoint). Third-party software and model weights keep their own
 licenses and are not included.
