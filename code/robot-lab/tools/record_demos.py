@@ -6,6 +6,15 @@ Expert: a vectorized per-env state machine on privileged object poses, commandin
 Recorded per step (30 Hz): scene + wrist RGB (256x256 uint8), joint state (6), commanded joint targets (6),
 timestamps, phase, privileged object poses. One .npz per finished episode (successes and failures, flagged).
 
+2026-10-05 (GR00T night 2, operator-approved edit): by default the env's success termination is DISABLED while
+recording, so the expert finishes RELEASE -> RETREAT -> SETTLE (a ~1 s open-and-retreat tail) and the recorder ends
+the episode itself at DONE. Before this, the env auto-reset the instant the jaw opened over the bowl, so demos held a
+median of 1 release frame, and the final action label was read AFTER that reset (the post-reset pose). The label is
+now snapshotted before any env-triggered reset. A demo is kept as a success only if it is STRICT: the task's
+success term held after release, the object was lifted >= 3 cm, and at the end of the tail the object is still in
+the bowl and the bowl is upright (<= 20 deg) and within 3 cm of its spawn. --legacy_success_reset restores the old
+behaviour (FLUX-era data).
+
 Run from the IsaacLab checkout:
   OMNI_KIT_ACCEPT_EULA=YES uv run --extra teleop python /mnt/work/AI/robot-lab/tools/record_demos.py \
       --num_envs 8 --episodes 16 --out /mnt/weights/ai/robot-lab-data/so101_mug_bowl/raw
@@ -26,6 +35,8 @@ parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--max_speed", type=float, default=0.20, help="TCP speed limit [m/s]")
 parser.add_argument("--object", default="mug", help="object name from robot_lab.tasks.so101_pick_place")
 parser.add_argument("--task", default="RobotLab-SO101-PickPlace-IK-Abs-v0")
+parser.add_argument("--legacy_success_reset", action="store_true",
+                    help="old behaviour: env resets on success at release (no release tail)")
 args = parser.parse_args()
 app = AppLauncher(headless=True, enable_cameras=True, device="cuda:0").app
 
@@ -41,7 +52,7 @@ import robot_lab.tasks  # noqa: E402,F401
 from isaaclab.utils.math import subtract_frame_transforms  # noqa: E402
 from isaaclab_tasks.utils import parse_env_cfg  # noqa: E402
 from robot_lab.tasks.so101_mug_bowl import SCENE_CAM_EYE, SCENE_CAM_TARGET  # noqa: E402
-from robot_lab.tasks.so101_pick_place import CAPTION, object_center_w, object_geometry, set_object  # noqa: E402
+from robot_lab.tasks.so101_pick_place import CAPTION, object_center_w, object_geometry, object_in_bowl, set_object  # noqa: E402,E501
 
 TASK = args.task
 OUT = Path(args.out)
@@ -68,11 +79,27 @@ PHASE_BUDGET = 150  # steps per phase before the episode is abandoned (expert fa
 
 cfg = set_object(parse_env_cfg(TASK, device="cuda:0", num_envs=args.num_envs), args.object)
 cfg.seed = args.seed
+if not args.legacy_success_reset:
+    cfg.terminations.success = None  # the recorder judges success itself and ends the episode after the tail
+LIFT_MIN, BOWL_SHIFT_MAX, BOWL_TILT_MAX = 0.03, 0.03, 20.0  # same strict thresholds as tools/gr00t_eval.py
 CAPTION_TEXT = CAPTION.format(args.object)
 # The mug's bbox center includes the handle; grasp its cup body instead (measured, tools/probe_mug_geom.py).
 GRASP_CENTER_OVERRIDE = {"mug": (0.0, 0.0223, 0.0019)}
 TCP_MIN_Z = 0.017  # [m] keep fingertips (1.5 cm below the TCP) off the table for flat objects
 env = gym.make(TASK, cfg=cfg).unwrapped
+# Snapshot the commanded joint targets BEFORE any reset inside env.step(): an env-triggered reset overwrites
+# joint_pos_target, and the old recorder then saved the post-reset pose as the episode's final action label.
+_target_snap = {"val": None}
+_orig_reset_idx = env._reset_idx
+
+
+def _reset_idx_snapshot(env_ids, *a, **k):
+    if _target_snap["val"] is None:
+        _target_snap["val"] = env.scene["robot"].data.joint_pos_target.clone()
+    return _orig_reset_idx(env_ids, *a, **k)
+
+
+env._reset_idx = _reset_idx_snapshot
 obs, _ = env.reset(seed=args.seed)
 N, dev, dt = env.num_envs, env.device, env.step_dt
 origins = env.scene.env_origins
@@ -168,7 +195,31 @@ def obj_quat():
     return q.torch if hasattr(q, "torch") else q
 
 
+z0 = torch.zeros(N, device=dev)           # object centre height at episode start
+max_rise = torch.zeros(N, device=dev)     # highest rise of the object centre above z0 this episode
+bowl0 = torch.zeros(N, 2, device=dev)     # bowl xy at episode start
+seen_in_bowl = torch.zeros(N, dtype=torch.bool, device=dev)  # task success term held at/after RELEASE
+
+
+def bowl_xy():
+    return (bowl.data.root_pos_w.torch if hasattr(bowl.data.root_pos_w, "torch") else bowl.data.root_pos_w)[:, :2] \
+        - origins[:, :2]
+
+
+def bowl_tilt_deg():
+    from isaaclab.utils.math import quat_apply
+
+    q = bowl.data.root_quat_w
+    q = q.torch if hasattr(q, "torch") else q
+    up = quat_apply(q, torch.tensor([0.0, 0.0, 1.0], device=dev).expand(N, 3))
+    return torch.rad2deg(torch.arccos(up[:, 2].clamp(-1, 1)))
+
+
 def reset_env_state(ids):
+    z0[ids] = (mug_body_center_w(env) - origins)[ids, 2]
+    max_rise[ids] = 0.0
+    bowl0[ids] = bowl_xy()[ids]
+    seen_in_bowl[ids] = False
     phase[ids] = 0
     phase_steps[ids] = 0
     cmd_tcp[ids] = tcp_pos_w()[ids]
@@ -232,10 +283,21 @@ while finished < args.episodes and app.is_running():
     mug_p = o["policy"]["object_pose"].cpu().numpy()
     bowl_p = o["policy"]["bowl_pose"].cpu().numpy()
 
+    _target_snap["val"] = None
     obs, rew, term, trunc, info = env.step(action)
     step_count += 1
-    # commanded joint targets produced by the IK action term this step = the policy's action label
-    joint_cmd = robot.data.joint_pos_target[:, joint_ids].detach().cpu().numpy()
+    # commanded joint targets produced by the IK action term this step = the policy's action label; for envs the env
+    # reset inside step() (timeout/drop), take the pre-reset snapshot
+    tgt_now = robot.data.joint_pos_target.clone()
+    if _target_snap["val"] is not None:
+        env_reset = (term | trunc)
+        tgt_now[env_reset] = _target_snap["val"][env_reset]
+    joint_cmd = tgt_now[:, joint_ids].detach().cpu().numpy()
+    # strict-success bookkeeping (values for env-reset envs belong to the next layout; those episodes are failures)
+    rise_now = (mug_body_center_w(env) - origins)[:, 2] - z0
+    max_rise = torch.maximum(max_rise, rise_now)
+    in_bowl = object_in_bowl(env)
+    seen_in_bowl |= in_bowl & (phase >= P["RELEASE"])
     ph = phase.cpu().numpy()
     for i in range(N):
         b = buffers[i]
@@ -246,12 +308,24 @@ while finished < args.episodes and app.is_running():
     # ---- episode ends: success/timeout/drop from the env, or expert stall ----
     grasp_missed = (phase == P["CARRY"]) & ((mug_body_center_w(env) - origins)[:, 2] < LIFT_CHECK_Z)
     stalled = (phase_steps > PHASE_BUDGET) | grasp_missed
-    done = (term | trunc | stalled).nonzero().flatten()
+    if args.legacy_success_reset:
+        expert_done = torch.zeros_like(stalled)
+    else:
+        expert_done = (phase == P["DONE"]) & ~stalled & ~term & ~trunc  # tail finished: the recorder ends it
+    shift = torch.linalg.norm(bowl_xy() - bowl0, dim=-1)
+    tilt = bowl_tilt_deg()
+    strict_now = expert_done & seen_in_bowl & in_bowl & (max_rise >= LIFT_MIN) & (shift <= BOWL_SHIFT_MAX) \
+        & (tilt <= BOWL_TILT_MAX)
+    done = (term | trunc | stalled | expert_done).nonzero().flatten()
     if len(done):
-        success_flags = env.termination_manager.get_term("success")
+        success_flags = env.termination_manager.get_term("success") if args.legacy_success_reset else strict_now
         for i in done.tolist():
             b = buffers[i]
             ok = bool(success_flags[i]) and not bool(stalled[i]) and int(phase[i]) >= P["RELEASE"]
+            if bool(expert_done[i]) and not ok:
+                print(f"NOTSTRICT env={i} seen_in_bowl={bool(seen_in_bowl[i])} in_bowl_end={bool(in_bowl[i])} "
+                      f"rise={float(max_rise[i]):.3f} bowl_shift={float(shift[i]):.3f} tilt={float(tilt[i]):.1f}",
+                      flush=True)
             if bool(stalled[i]):
                 print(f"STALL env={i} phase={PHASES[int(phase[i])]} tcp={tcp_pos_w()[i].cpu().numpy().round(3)} "
                       f"target={phase_target(phase, grasp_yaw)[i].cpu().numpy().round(3)}", flush=True)
@@ -265,6 +339,11 @@ while finished < args.episodes and app.is_running():
                     timestamp=(np.arange(len(b["state"])) * dt).astype(np.float32),
                     phase=np.array(b["phase"], np.int8), object_pose=np.stack(b["mug"]).astype(np.float32),
                     bowl_pose=np.stack(b["bowl"]).astype(np.float32), success=np.array(ok),
+                    strict=np.array(json.dumps({"seen_in_bowl": bool(seen_in_bowl[i]), "in_bowl_end": bool(in_bowl[i]),
+                                                "max_rise_m": round(float(max_rise[i]), 4),
+                                                "bowl_shift_m": round(float(shift[i]), 4),
+                                                "bowl_tilt_deg": round(float(tilt[i]), 1),
+                                                "legacy_success_reset": args.legacy_success_reset})),
                     task=np.array(CAPTION_TEXT), object=np.array(args.object),
                 )
                 print(f"EPISODE {ep_index:05d} env={i} steps={len(b['state'])} success={ok} "
@@ -272,8 +351,9 @@ while finished < args.episodes and app.is_running():
                 ep_index += 1
                 finished += 1
                 successes += int(ok)
-        if stalled.any():  # env did not reset itself: force it
-            env._reset_idx(stalled.nonzero().flatten())
+        forced = stalled | expert_done
+        if forced.any():  # env did not reset itself: force it
+            env._reset_idx(forced.nonzero().flatten())
             obs = env.observation_manager.compute()
         reset_env_state(done)
 
@@ -284,6 +364,9 @@ meta = {
     "caption": CAPTION_TEXT, "object": args.object, "episodes": finished, "successes": successes,
     "expert": {"tcp_local_m": TCP_LOCAL, "grip_preshape": GRIP_PRESHAPE, "pitch_max_deg": PITCH_MAX_DEG, "r_vertical": R_VERTICAL, "r_full_pitch": R_FULL_PITCH, "max_speed_mps": args.max_speed, "phases": PHASES},
     "seed": args.seed, "wall_s": round(time.time() - t0, 1), "sim_steps": step_count,
+    "legacy_success_reset": args.legacy_success_reset,
+    "success_rule": "env success term at release" if args.legacy_success_reset else
+    "strict: in bowl after release AND at tail end, lift>=3cm, bowl shift<=3cm, tilt<=20deg",
 }
 (OUT / "meta.json").write_text(json.dumps(meta, indent=1))
 print("SUMMARY", json.dumps(meta), flush=True)

@@ -164,6 +164,8 @@ h2.part-title span{color:var(--teal)}
   <nav class="rail" aria-label="Modules">
     <h2>Field manual</h2>
     <ol>
+      <li class="part-label">Arm Lab (Part I, redo)</li>
+      <li><a href="#arm"><span class="n">I</span>It never let go</a></li>
       <li class="part-label">Patrol Lab</li>
       <li><a href="#m9"><span class="n">9</span>Evaluated first</a></li>
       <li><a href="#m10"><span class="n">10</span>Avoiding people</a></li>
@@ -180,9 +182,9 @@ h2.part-title span{color:var(--teal)}
       <div class="plate"><span>Course log · Part II</span><span><b>Patrol Lab</b> · 2026-09-24 → 10-03</span><span>Isaac Sim 6.1 · Isaac Lab 3.0 · Ubuntu 26.04</span></div>
       <h1>Blackforge<br><span>Robot Lab</span></h1>
       <p class="lede">A security-patrol robot in a simulated yard, a crowd of people who don't look where they're going, and an avoidance bake-off that turned out to be measuring the wrong thing. Then reinforcement learning, run the honest way: pre-registered, on sealed test seeds, until a learned policy matched the hand-written planner. Each lesson keeps a collapsed block that gives a coding agent what it needs to reproduce the step.</p>
-      <p class="lede" style="font-size:16px">Module numbers follow the full course. Part I (teaching an SO-101 arm to put a mug in a bowl) is being redone with an openly licensed action model and will be added here. Reference code: <a href="https://github.com/matlowai/robot-lab-public">github.com/matlowai/robot-lab-public</a>. The talk version, with the opening reel, slides and an interactive field guide: <a href="talk/">talk</a>. A side quest, turning one image into a 3D Gaussian splat with a video model: <a href="splat/">Splat Lab</a>.</p>
+      <p class="lede" style="font-size:16px">Module numbers follow the full course. Part I (teaching an SO-101 arm to put a mug in a bowl) is being redone with NVIDIA GR00T N1.7; <a href="#arm">the first two nights</a> are below, and the full Part I follows. Reference code: <a href="https://github.com/matlowai/robot-lab-public">github.com/matlowai/robot-lab-public</a>. The talk version, with the opening reel, slides and an interactive field guide: <a href="talk/">talk</a>. A side quest, turning one image into a 3D Gaussian splat with a video model: <a href="splat/">Splat Lab</a>.</p>
       <details class="toc-mobile"><summary>Modules</summary>
-        <ol><li><a href="#m9">9 · Evaluated first</a></li><li><a href="#m10">10 · Avoiding people</a></li><li><a href="#m11">11 · The editor died</a></li><li><a href="#m12">12 · An honest bake-off</a></li><li><a href="#m15">15 · Teaching it to yield</a></li><li><a href="#m16">16 · Up next</a></li><li><a href="#gotchas">★ Gotchas</a></li></ol>
+        <ol><li><a href="#arm">I · It never let go</a></li><li><a href="#m9">9 · Evaluated first</a></li><li><a href="#m10">10 · Avoiding people</a></li><li><a href="#m11">11 · The editor died</a></li><li><a href="#m12">12 · An honest bake-off</a></li><li><a href="#m15">15 · Teaching it to yield</a></li><li><a href="#m16">16 · Up next</a></li><li><a href="#gotchas">★ Gotchas</a></li></ol>
       </details>
       <div class="hero-media">
         <figure style="margin:0">
@@ -199,6 +201,107 @@ h2.part-title span{color:var(--teal)}
         </div>
       </div>
     </header>
+
+<!-- ===================== PART I REDO: GR00T ===================== -->
+    <section class="module" id="arm">
+      <div class="module-head"><span class="num">I</span><h2 class="mt">The arm, redone: it grasped, but never let go</h2></div>
+      <p class="module-sub">Part I's SO-101 arm (put an object in a bowl, Isaac Lab 3.0) moves from FLUX 3 Action to NVIDIA GR00T N1.7. Two nights: the first model grasped and lifted but never opened its hand, and the cause was in the demos, not the model. All numbers are simulation, strict successes, with their denominators. 2026-10-04 → 10-06.</p>
+
+      <article class="lesson col">
+        <p class="eyebrow">Lesson I.1</p>
+        <h3>Swap the model, keep the test</h3>
+        <p>FLUX 3 Action's weights are non-commercial, and on our task it scored 0 real successes: every success its detector reported overnight was fake. We replaced it with NVIDIA's GR00T N1.7 (3B parameters), which has an official SO-101 / LeRobot fine-tuning path. Its model card says NVIDIA Open Model License, but the LICENSE file shipped with the checkpoint is the non-commercial NVIDIA License; check which applies before any commercial use. The eval did not change: same objects, same seeds, same strict rule.</p>
+        <ul class="tight">
+          <li><b>Strict success</b> = the task's success term fires <i>and</i> the object was lifted at least 3 cm <i>and</i> the bowl stayed upright (≤ 20°) within 3 cm of where it started <i>and</i> no physics blow-up. Layouts with the object starting within 10 cm of the bowl are re-seeded.</li>
+          <li><b>Check the harness first.</b> Recorded expert demos replayed through the same eval path: 31 of 32 strict on night 2. If that number were low, every policy number would be suspect.</li>
+          <li><b>Faster to plan:</b> about 120 ms per action chunk against 0.9–1.2 s for FLUX.</li>
+        </ul>
+      </article>
+
+      <article class="lesson col">
+        <p class="eyebrow">Lesson I.2</p>
+        <h3>It never saw itself let go</h3>
+        <p>Night 1 fine-tuned GR00T for 25,000 steps on the 909 demos from the FLUX era. Final: <b>8/72 strict</b> (12 episodes per object). Lifting worked: the blue block was lifted in 10 of 12 episodes. But in 48 of the 59 episodes where the object was lifted and not placed, the policy never commanded the gripper open at all.</p>
+        <p>The cause was the demo recorder. The environment reset the instant the object landed in the bowl, so each demo held about one release frame in roughly 145. And the last label of every demo was the reset pose, not the release. No amount of training teaches a behaviour that is missing from the data.</p>
+        <figure>
+          <video src="media/part1/seed1004_night1_vs_night2.mp4" poster="media/part1/seed1004_night1_vs_night2_still.jpg" controls muted loop playsinline preload="metadata" aria-label="The same layout twice: night 1 holds the blue block over the bowl with the gripper closed; night 2 places it"></video>
+          <figcaption><span class="tag bad">Night 1</span><span class="tag good">Night 2</span><b>Same layout, seed 1004.</b> Scene camera left, wrist camera right. Night 1 carries the block over the bowl and holds it there for the full 20 s. Night 2 opens and the episode ends on success at 4.4 s (its last frame is held).</figcaption>
+        </figure>
+      </article>
+
+      <article class="lesson col">
+        <p class="eyebrow">Lesson I.3</p>
+        <h3>Record the release, then weight it</h3>
+        <p>Night 2 fixed the recorder: labels are read before the reset, and each kept demo includes a 0.5–1.3 s tail of release, retreat and settle. That gave 862 demos with a median of 42 release frames each. The fine-tune put a 5× loss weight on frames where the gripper opens or closes, from the base model, same recipe, 25,000 steps. Evaluation doubled to 24 episodes per object.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Object</th><th>Split</th><th class="num">Night 1 final</th><th class="num">Night 2 final</th></tr></thead>
+          <tbody>
+            <tr><td>Mug</td><td>train</td><td class="num">5/12</td><td class="num">20/24</td></tr>
+            <tr><td>Soup can</td><td>train</td><td class="num">3/12</td><td class="num">19/24</td></tr>
+            <tr><td>Blue block</td><td>train</td><td class="num">0/12</td><td class="num">17/24</td></tr>
+            <tr><td>Sugar box</td><td>train</td><td class="num">0/12</td><td class="num">5/24</td></tr>
+            <tr><td>Cracker box</td><td>held out</td><td class="num">0/12</td><td class="num">5/24</td></tr>
+            <tr><td>Mustard bottle</td><td>held out</td><td class="num">0/12</td><td class="num">7/24</td></tr>
+            <tr><td><b>All</b></td><td></td><td class="num"><b>8/72</b></td><td class="num"><b>73/144</b></td></tr>
+          </tbody>
+        </table></div>
+        <ul class="tight">
+          <li><b>Training objects 61/96, held-out objects 12/48.</b> The held-out pair was never in the demos.</li>
+          <li><b>Weighting is a blunt tool.</b> At the halfway checkpoint the 5× weight had overshot: on the blue block the gripper was commanded open most of the time and the policy lifted in only 1 of 12 episodes (halfway total 17/96). The final checkpoint recovered both grasp and release.</li>
+          <li><b>Look at every success.</b> The report links a frame strip for each one; look at them before quoting a number.</li>
+        </ul>
+        <figure>
+          <video src="media/part1/night2_cracker_box_ep05.mp4" poster="media/part1/night2_cracker_box_ep05_still.jpg" controls muted loop playsinline preload="metadata" aria-label="Night 2 policy places a cracker box, an object it never saw in training, in the bowl"></video>
+          <figcaption><span class="tag good">Held out</span><b>Cracker box,</b> never in the training demos: grasp, carry, release in the bowl.</figcaption>
+        </figure>
+        <figure>
+          <img src="media/part1/night2_cracker_box_ep05_strip.jpg" alt="Six-frame strip of the cracker box episode from start to placed" loading="lazy" style="width:100%">
+          <figcaption>The strip the report attaches to that success.</figcaption>
+        </figure>
+        <details class="agent"><summary>Reproduce with a coding agent<span class="hint">commands</span></summary><div class="agent-body">
+          <div class="codebox"><pre>cd /mnt/work/AI/robot-lab                       # code: code/robot-lab/tools in this repo
+bash tools/overnight_gr00t_v2.sh tiny            # gate: every stage on a few demos, minutes
+bash tools/overnight_gr00t_v2.sh full            # record -> convert -> fine-tune -> strict eval -> report
+# output: overnight-gr00t-v2/full-*/MORNING_REPORT.md, eval/*/results_*.json, *_strict_strip.png</pre><button class="copy" type="button">Copy</button></div>
+          <h5>Agent prompt</h5>
+          <div class="codebox"><pre class="prompt">The policy grasps and lifts but never opens the gripper. Before touching the model, count release frames per demo. Fix the recorder so it reads each step's label before any auto-reset and keeps a release + retreat + settle tail after success. Re-record, convert to GR00T's LeRobot layout, replay a few recorded demos through the strict eval (expect nearly all strict), then fine-tune from the base model with extra loss weight on gripper open/close frames. Evaluate on fixed per-episode seeds with the strict rule, and attach a frame strip to every success.</pre><button class="copy" type="button">Copy</button></div>
+        </div></details>
+      </article>
+
+      <article class="lesson col">
+        <p class="eyebrow">Lesson I.4</p>
+        <h3>Can a local VLM tell whether it worked?</h3>
+        <p>After an attempt, we asked a local vision-language model "is the object in the bowl?" and scored its answers against the simulator's ground truth. Frames taken at the instant of release are ambiguous, with the fingers still around the object: Gemma 4 12B missed 24–40 of 45 real successes there. So the arm retreats and waits about a second before the picture is taken.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Model (served locally)</th><th class="num">Accuracy</th><th class="num">False "done"</th><th class="num">Missed</th><th class="num">Latency</th></tr></thead>
+          <tbody>
+            <tr><td>Gemma 4 12B</td><td class="num">94.7%</td><td class="num">5/50</td><td class="num">0/45</td><td class="num">0.64 s</td></tr>
+            <tr><td>Qwen 3.8 27B</td><td class="num">97.9%</td><td class="num">1/50</td><td class="num">1/45</td><td class="num">1.9 s</td></tr>
+          </tbody>
+        </table></div>
+        <p>Then a 4-bit QLoRA fine-tune of Gemma (Unsloth, one epoch, 7,614 labelled frames mined from our recordings, one training seed per arm). It fixed the error we trained against and created another:</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Same eval harness</th><th class="num">Base</th><th class="num">Language LoRA</th><th class="num">+ vision LoRA</th></tr></thead>
+          <tbody>
+            <tr><td>Settled frames: false "done"</td><td class="num">12/50</td><td class="num">3/50</td><td class="num">2/50</td></tr>
+            <tr><td>Release-instant frames: missed successes</td><td class="num">15/45</td><td class="num">41/45</td><td class="num">43/45</td></tr>
+            <tr><td>Unseen objects: missed successes</td><td class="num">3/12</td><td class="num">9/12</td><td class="num">12/12</td></tr>
+          </tbody>
+        </table></div>
+        <ul class="tight">
+          <li><b>Not deployable yet.</b> The tuned models answer "the gripper is still closed" when it has just opened around an object already in the bowl. Our training frames had 805 "hovering over the bowl" failures against 117 release-instant successes; that imbalance is the leading hypothesis, untested.</li>
+          <li><b>Two harnesses, two baselines.</b> The first table is the served models (Gemma on vLLM, Qwen on NInfer); the second is the fine-tuning harness (Transformers). Compare within a table, not across.</li>
+          <li><b>Code:</b> <a href="https://github.com/matlowai/robot-lab-public/tree/main/code/robot-lab/verifier"><code>code/robot-lab/verifier</code></a> (frame builder, QLoRA training, eval against sim truth).</li>
+        </ul>
+      </article>
+
+      <article class="lesson col">
+        <p class="eyebrow">Next</p>
+        <h3>A learned release gate</h3>
+        <p>Residual reinforcement learning on top of the frozen night-1 model (the one that grasps but never lets go): a small PPO policy nudges the joints by a few degrees and decides when to open, rewarded by the same strict checks. Its sealed-seed evaluation is running; the result goes here when it lands, reported as "GR00T + release gate", not "GR00T learned to release". Code: <a href="https://github.com/matlowai/robot-lab-public/tree/main/code/robot-lab/rl"><code>code/robot-lab/rl</code></a>.</p>
+      </article>
+    </section>
+
 
 <!-- ===================== MODULE 9 ===================== -->
     <section class="module" id="m9">
