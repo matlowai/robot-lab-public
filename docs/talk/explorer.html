@@ -1744,5 +1744,15 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => redr
 </script>
 <script src="race.js"></script>
 <script>if(window.RacePlayer)RacePlayer.mountAll();</script>
+<script>
+// Cache videos/images on this device (see ../sw.js) and fetch this page's media in the background.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('../sw.js', { scope: '../' }).then(function () { return navigator.serviceWorker.ready; }).then(function (reg) {
+    var urls = [].slice.call(document.querySelectorAll('video[src], video[poster], img[src], source[src]')).reduce(function (a, el) {
+      ['src', 'poster'].forEach(function (k) { var v = el.getAttribute(k); if (v) a.push(new URL(v, location.href).href); }); return a; }, []);
+    if (reg.active && urls.length) reg.active.postMessage({ type: 'warm', urls: urls });
+  }).catch(function () {});
+}
+</script>
 </body>
 </html>
