@@ -634,6 +634,7 @@ python src/musubi_tuner/minimax_h3_generate_video.py --task ref2va \
     <section class="module" id="s7">
       <div class="module-head"><span class="num">7</span><h2 class="mt">How the pipeline works</h2></div>
       <p class="module-sub">Two machines, one hand-off: an MP4 with its hashes, caption and generation settings.</p>
+      <p>Starting from a text idea instead of a picture? Make the reference image first with a general image model; we suggest GPT Image 2.5. The cat on this page was made by hand.</p>
       <ol class="flow">
         <li class="video"><b>Image + LoRA</b>One reference image; the ORB360 step-1500 LoRA on MiniMax-H3 Ref2VA; the model card's orbit caption.<span class="where">Video side · 96 GB GPU</span></li>
         <li class="video"><b>Orbit video</b>124 frames, 1024×768, 24 fps, 20 sampling steps, one seed. Checked by eye: one turn, back visible, end matches start.<span class="where">Video side</span></li>
