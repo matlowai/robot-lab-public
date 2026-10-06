@@ -782,6 +782,7 @@ if(window.ReelPlayer)ReelPlayer.mountAll();
     notesBody.innerHTML=a?a.innerHTML:'<p>No notes.</p>';
     if(!fromHash){ try{history.replaceState(null,'','#'+(cur+1));}catch(e){location.hash=String(cur+1);} }
     syncVideos();
+    if(window.__warmSlides) window.__warmSlides(cur);
   }
   function setGrid(on){
     grid=on; document.body.classList.toggle('grid',on); fit(); syncVideos();
@@ -870,12 +871,22 @@ if(window.ReelPlayer)ReelPlayer.mountAll();
 })();
 </script>
 <script>
-// Cache videos/images on this device (see ../sw.js) and fetch this page's media in the background.
+// Cache media on this device (see ../sw.js). On a slow link only the current and next two slides are fetched ahead,
+// at low priority, one file at a time; videos not cached yet stream from the network as usual.
+window.__warmSlides = function () {};
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('../sw.js', { scope: '../' }).then(function () { return navigator.serviceWorker.ready; }).then(function (reg) {
-    var urls = [].slice.call(document.querySelectorAll('video[src], video[poster], img[src], source[src]')).reduce(function (a, el) {
-      ['src', 'poster'].forEach(function (k) { var v = el.getAttribute(k); if (v) a.push(new URL(v, location.href).href); }); return a; }, []);
-    if (reg.active && urls.length) reg.active.postMessage({ type: 'warm', urls: urls });
+    var slides = [].slice.call(document.querySelectorAll('section.slide'));
+    window.__warmSlides = function (i) {
+      var urls = [];
+      slides.slice(i, i + 3).forEach(function (sl) {
+        [].slice.call(sl.querySelectorAll('video[src], video[poster], img[src], source[src]')).forEach(function (el) {
+          ['src', 'poster'].forEach(function (k) { var v = el.getAttribute(k); if (v) urls.push(new URL(v, location.href).href); });
+        });
+      });
+      if (reg.active && urls.length) reg.active.postMessage({ type: 'warm', urls: urls });
+    };
+    var n = parseInt((location.hash || '#1').slice(1), 10); window.__warmSlides(isNaN(n) ? slides.length - 1 : n - 1);
   }).catch(function () {});
 }
 </script>

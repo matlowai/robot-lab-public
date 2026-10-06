@@ -4,6 +4,7 @@
 // URLs ({type: 'warm', urls}) so the next slides are cached in the background before they are shown.
 // Bump CACHE whenever a media file is replaced under the same name; old caches are deleted on activate.
 const CACHE = 'robot-lab-media-v1';
+const VIDEO = /\.(mp4|webm)(\?.*)?$/i;
 const MEDIA = /\.(mp4|webm|jpg|jpeg|png|gif|webp|spz|ply|json)(\?.*)?$/i;
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -14,11 +15,12 @@ self.addEventListener('activate', (e) => {
   })());
 });
 
-async function full(url) {
+async function full(url, low) {
   const cache = await caches.open(CACHE);
   let r = await cache.match(url);
   if (r) return r;
-  r = await fetch(url, { credentials: 'same-origin' });  // whole file, no Range, so it can be cached
+  // whole file, no Range, so it can be cached; background warm-ups ask for low network priority
+  r = await fetch(url, low ? { credentials: 'same-origin', priority: 'low' } : { credentials: 'same-origin' });
   if (r.ok && r.status === 200) await cache.put(url, r.clone());
   return r;
 }
@@ -52,6 +54,14 @@ self.addEventListener('fetch', (e) => {
   const key = url.origin + url.pathname;
   e.respondWith((async () => {
     try {
+      // Videos not cached yet stream straight from the network (no wait for the whole file on a slow link);
+      // they are cached by the low-priority warm-up the pages request for upcoming slides.
+      if (VIDEO.test(url.pathname)) {
+        const hit = await (await caches.open(CACHE)).match(key);
+        if (!hit) return fetch(req);
+        const range = req.headers.get('Range');
+        return range ? slice(hit.clone(), range) : hit;
+      }
       const r = await full(key);
       if (!r.ok) return r;
       const range = req.headers.get('Range');
@@ -62,15 +72,27 @@ self.addEventListener('fetch', (e) => {
   })());
 });
 
+const queue = [];
+let draining = null;
+function drain() {
+  if (!draining) draining = (async () => {
+    while (queue.length) { const u = queue.shift(); try { await full(u, true); } catch (err) { /* try the next one */ } }
+    draining = null;
+  })();
+  return draining;
+}
+
 self.addEventListener('message', (e) => {
   const d = e.data || {};
   if (d.type !== 'warm' || !Array.isArray(d.urls)) return;
-  e.waitUntil((async () => {
-    for (const u of d.urls) {
-      try {
-        const url = new URL(u, self.location.href);
-        if (url.origin === self.location.origin && MEDIA.test(url.pathname)) await full(url.origin + url.pathname);
-      } catch (err) { /* skip one bad URL, keep warming the rest */ }
-    }
-  })());
+  const add = [];
+  for (const u of d.urls) {
+    try {
+      const url = new URL(u, self.location.href);
+      if (url.origin === self.location.origin && MEDIA.test(url.pathname)) add.push(url.origin + url.pathname);
+    } catch (err) { /* skip one bad URL */ }
+  }
+  for (const k of add) { const i = queue.indexOf(k); if (i >= 0) queue.splice(i, 1); }
+  queue.unshift(...add);  // newest request first (the slides about to be shown), one file at a time
+  e.waitUntil(drain());
 });
