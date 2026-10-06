@@ -460,9 +460,106 @@ body.grid #notes,body.grid #bar{display:none}
   </aside>
 </section>
 
+<!-- 17a: GR00T night 1 -->
+<section class="slide alt" style="gap:32px">
+  <p class="eyebrow b" style="--i:0">Swap the model, keep the test · NVIDIA GR00T N1.7</p>
+  <h2 class="b" style="--i:1">It picks it up. It never lets go.</h2>
+  <div class="row grow" style="gap:56px;align-items:flex-start">
+    <figure class="b" style="--i:2;width:960px;flex:none"><video src="media/arm_gr00t_never_lets_go.mp4" poster="media/arm_gr00t_never_lets_go_still.jpg" muted loop playsinline preload="metadata"></video><figcaption>Night 1, blue block: lifted, carried to the bowl, held there for the full 20 s</figcaption></figure>
+    <div class="col grow b" style="--i:3;gap:22px">
+      <div><span class="big al">8 / 72</span><p class="mono small">strict real places · 6 objects × 12</p></div>
+      <p class="small">Same 909 demos, objects, seeds and strict rule as FLUX (0 real). Lifted but not placed: in <span class="al mono">48 of 59</span>, it never opened the jaw.</p>
+      <p class="small"><span class="hl">The cause was the data.</span> The recorder reset the instant the object landed, so each demo held about <span class="hl mono">1</span> release frame in ~145.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>We swapped FLUX 3 Action for NVIDIA's GR00T N1.7, a 3-billion-parameter action model with an official SO-101 / LeRobot fine-tuning path. It plans an action chunk in about 120 ms, against 0.9 to 1.2 s for FLUX. The test did not change: same objects, same seeds, same strict rule (the object must be lifted, end up in the bowl, and the bowl must stay upright).</p>
+    <p>Night 1 fine-tuned it on the same 909 demos: 8 of 72 strict. It learned to grasp and lift well. But in 48 of the 59 episodes where it lifted the object and didn't place it, it never commanded the gripper open at all. Watch the clip: it carries the block to the bowl and just holds it there.</p>
+    <p>The cause was in the demos, not the model. The environment reset the instant the object landed, so each demo had about one frame of letting go out of roughly 145. You cannot learn a behaviour that isn't in the data.</p>
+    <p><b>LLM trainer:</b> this is a truncated-target bug: the last tokens of every example were cut off. <b>Exec:</b> when a model "can't do" something, check whether anyone ever showed it. <b>Agent builder:</b> same as fine-tuning on transcripts that end before the final tool call.</p>
+  </aside>
+</section>
+
+<!-- 17b: GR00T night 2 -->
+<section class="slide" style="gap:28px">
+  <p class="eyebrow b" style="--i:0">Night 2 · same model, re-recorded demos</p>
+  <h2 class="b" style="--i:1">Fix the data, not the model</h2>
+  <div class="row b" style="--i:2;gap:40px">
+    <figure style="flex:1"><video src="media/arm_gr00t_let_go_mug.mp4" poster="media/arm_gr00t_let_go_mug_still.jpg" muted loop playsinline preload="metadata"></video><figcaption><span class="tag sn">training object</span> mug · 20 / 24</figcaption></figure>
+    <figure style="flex:1"><video src="media/arm_gr00t_let_go_cracker_box.mp4" poster="media/arm_gr00t_let_go_cracker_box_still.jpg" muted loop playsinline preload="metadata"></video><figcaption><span class="tag hl">never trained on</span> cracker box · 5 / 24</figcaption></figure>
+  </div>
+  <div class="row b" style="--i:3;gap:48px;align-items:center">
+    <span class="big" style="font-size:96px;flex:none"><span style="color:var(--muted);text-decoration:line-through">8/72</span> <span class="hl">73/144</span></span>
+    <div class="col" style="gap:8px">
+      <p class="small">Strict, night 2 · training objects <span class="mono hl">61/96</span>, never trained on <span class="mono hl">12/48</span></p>
+      <p class="small">Demos keep the release: median <span class="mono">42</span> release frames (862 demos), plus <span class="mono">5×</span> loss weight on gripper open/close.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Night 2 fixed the recorder, not the model: labels are read before the reset, and every demo keeps a tail of release, retreat and settle. That gave 862 demos with a median of 42 release frames each. The fine-tune also put five times the loss weight on frames where the gripper opens or closes. Same base model, same recipe, evaluation doubled to 24 episodes per object.</p>
+    <p>Result: 73 of 144 strict, up from 8 of 72. Training objects 61 of 96; the two objects never in the demos, 12 of 48. The right clip is one of those: the cracker box was never in training.</p>
+    <p>Weighting is blunt: at the halfway checkpoint the gripper was commanded open too often and the score was 17 of 96; the final checkpoint recovered.</p>
+    <p><b>Exec:</b> the biggest jump came from fixing data collection, not from a bigger model. <b>LLM trainer:</b> data curation and loss weighting on the rare tokens that matter. <b>Beginner:</b> half the time is still a miss; on new objects it's one in four.</p>
+  </aside>
+</section>
+
+<!-- 17c: RL release gate -->
+<section class="slide alt" style="gap:28px">
+  <p class="eyebrow b" style="--i:0">Residual RL · night-1 GR00T frozen · sealed test seeds</p>
+  <h2 class="b" style="--i:1">Or learn when to let go</h2>
+  <div class="row b" style="--i:2;gap:40px">
+    <div class="vlab" style="flex:1"><video src="media/arm_gr00t_rl_base_cracker_box.mp4" poster="media/arm_gr00t_rl_base_cracker_box_still.jpg" muted loop playsinline preload="metadata"></video><span style="left:14px">GR00T alone</span></div>
+    <div class="vlab" style="flex:1"><video src="media/arm_gr00t_rl_gate_cracker_box.mp4" poster="media/arm_gr00t_rl_gate_cracker_box_still.jpg" muted loop playsinline preload="metadata"></video><span style="left:14px" class="hl">+ release gate</span></div>
+  </div>
+  <div class="row b" style="--i:3;gap:64px;align-items:baseline">
+    <div class="col" style="gap:4px"><p class="mono small">TRAINING OBJECTS</p><p style="font-size:52px;font-family:var(--display);font-weight:800"><span style="color:var(--muted)">58/465</span> → <span class="hl">382/465</span></p></div>
+    <div class="col" style="gap:4px"><p class="mono small">NEVER TRAINED ON</p><p style="font-size:52px;font-family:var(--display);font-weight:800"><span style="color:var(--muted)">22/236</span> → <span class="hl">122/236</span></p></div>
+  </div>
+  <p class="tiny b" style="--i:4">A small PPO policy on top adds a ≤ 4° arm correction and a "release now" gate. Paired: same layout, same GR00T noise. Not comparable to night 2: different seeds, different base model.</p>
+  <aside class="notes">
+    <p>The other route: keep night 1's model, the one that never lets go, frozen, and train a small reinforcement-learning policy on top. Every action chunk it adds a correction of at most 4 degrees to the arm and decides whether to open the gripper now. Reward comes from the same strict checks. About five hours on one GPU.</p>
+    <p>Then a paired test on sealed seeds never used in training: for each layout, GR00T alone and GR00T with the gate see the same scene and the same model noise. Training objects went from 58 of 465 to 382 of 465; objects never trained on from 22 of 236 to 122 of 236. The clips are the same cracker-box layout: alone, it holds the box over the bowl; with the gate, it lets go.</p>
+    <p>Say it carefully: this is "GR00T plus a release gate", not "GR00T learned to release". The opening itself is a fixed jaw-open action. And it's not comparable to night 2's 73 of 144: different seeds, and the gate sits on night 1's model.</p>
+    <p><b>LLM trainer:</b> residual RL on a frozen imitation policy, like a small reward-trained head on a frozen base. <b>Exec:</b> two different fixes for one failure, measured on the same strict rule. <b>Agent builder:</b> a frozen model plus a small learned decision on when to act.</p>
+  </aside>
+</section>
+
+<!-- 17d: VLM checker + fine-tune -->
+<section class="slide" style="gap:28px">
+  <p class="eyebrow b" style="--i:0">Can a local vision model tell whether it worked?</p>
+  <h2 class="b" style="--i:1;font-size:64px">Check it after it settles. Fine&#8209;tuning traded one error for another.</h2>
+  <div class="row grow" style="gap:56px;align-items:flex-start">
+    <div class="col b" style="--i:2;flex:1;gap:16px">
+      <p class="mono small sn">SERVED · 95 SETTLED FRAMES</p>
+      <table class="t" style="font-size:30px">
+        <tr><th>Model</th><th class="n">Right</th><th class="n">False "done"</th><th class="n">Latency</th></tr>
+        <tr><td>Gemma 4 12B</td><td class="n">94.7%</td><td class="n">5/50</td><td class="n">0.64 s</td></tr>
+        <tr class="win"><td>Qwen 3.8 27B</td><td class="n">97.9%</td><td class="n hl">1/50</td><td class="n">1.9 s</td></tr>
+      </table>
+      <p class="small">At the instant of release, fingers still around the object, Gemma missed <span class="al mono">24 of 45</span> real places. So the arm retreats and waits before the picture.</p>
+    </div>
+    <div class="col b" style="--i:3;flex:1;gap:16px">
+      <p class="mono small hl">GEMMA 4 12B · 4-BIT QLoRA (UNSLOTH)</p>
+      <table class="t" style="font-size:30px">
+        <tr><th></th><th class="n">Base</th><th class="n">Tuned</th></tr>
+        <tr><td>False "done", settled</td><td class="n">12/50</td><td class="n hl">3/50</td></tr>
+        <tr><td>Missed, at release</td><td class="n">15/45</td><td class="n bad">41/45</td></tr>
+        <tr><td>Missed, unseen objects</td><td class="n">3/12</td><td class="n bad">9/12</td></tr>
+      </table>
+      <p class="tiny">One training seed. Base re-scored in the fine-tune harness; compare within a table, not across.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>After an attempt we asked a local vision-language model "has the object been placed in the bowl?" and scored it against the simulator's ground truth. On frames taken after the arm let go, retreated and the scene settled: Gemma 4 12B was right 94.7% of the time and said "done" on 5 of 50 failures, in 0.64 s; Qwen 3.8 27B was right 97.9%, 1 false "done" in 50, in 1.9 s. On frames at the instant of release, Gemma missed 24 of 45 real places. So when you take the picture matters as much as which model looks at it.</p>
+    <p>Then we fine-tuned Gemma with 4-bit QLoRA (Unsloth, one epoch, one training seed). It fixed the error we trained against: false "done" from 12 of 50 to 3 of 50. And it created another: at the release instant it missed 41 of 45 real places instead of 15, and on objects it never trained on 9 of 12 instead of 3. Not deployable. Our leading hypothesis, untested, is class imbalance in the training frames.</p>
+    <p>The left table is the served models; the right is the fine-tuning harness, whose base scores differently (12 of 50). Compare within a table.</p>
+    <p><b>Agent builder:</b> this is LLM-as-judge, measured against ground truth, with its failure modes. <b>LLM trainer:</b> fine-tuning on one error metric moved the others; always re-run the full table. <b>Exec:</b> a checker is a model too, and it needs its own denominator.</p>
+  </aside>
+</section>
+
 <!-- 18 -->
 <section class="slide alt">
-  <p class="eyebrow b" style="--i:0">World models</p>
+  <p class="eyebrow b" style="--i:0">World models · FLUX 3 Action</p>
   <h2 class="b" style="--i:1">The model imagines the next two seconds, and we can watch</h2>
   <div class="row grow" style="gap:48px;align-items:center">
     <figure class="b" style="--i:2;width:420px;flex:none"><video src="media/droid_imagined.mp4" poster="media/droid_imagined_still.jpg" muted loop playsinline preload="metadata"></video><figcaption>Real (top) vs imagined (bottom), public robot data</figcaption></figure>
@@ -483,9 +580,9 @@ body.grid #notes,body.grid #bar{display:none}
   <h2 class="b" style="--i:1">What isn't mature yet</h2>
   <div class="col" style="gap:22px">
     <div class="row b" style="--i:2;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">crowds</span><p>Our learned steering doesn't beat a hand-written planner around ordinary people yet.</p></div>
-    <div class="row b" style="--i:3;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">hands</span><p>The fine-tuned arm succeeds 1 time in 6, with help.</p></div>
+    <div class="row b" style="--i:3;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">hands</span><p>The arm now places 73 of 144 in simulation, but only 12 of 48 on objects it never trained on.</p></div>
     <div class="row b" style="--i:4;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">reality</span><p>Everything here is simulated. The gap to real floors, light and people is real.</p></div>
-    <div class="row b" style="--i:5;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">evals</span><p>Evaluations are easy to fool. We fooled ourselves twice in one week, and caught it.</p></div>
+    <div class="row b" style="--i:5;gap:28px;align-items:baseline"><span class="tag al" style="flex:none;width:170px;text-align:center">evals</span><p>Evaluations are easy to fool, and so are model checkers. We fooled ourselves twice in one week, and caught it.</p></div>
   </div>
   <aside class="notes">
     <p>Say this plainly. The technology is not mature. Hand-written rules still win in places. Learned manipulation is fragile. Sim-to-real is a whole discipline. And evaluation is where most of the danger is, because a broken evaluation makes an immature system look ready.</p>
@@ -603,10 +700,12 @@ body.grid #notes,body.grid #bar{display:none}
 <!-- 27 -->
 <section class="slide alt">
   <p class="eyebrow">Credits</p>
-  <h2 style="font-size:64px">Built on open tools and public data</h2>
+  <h2 style="font-size:64px">Built on downloadable tools, models and data</h2>
   <ul class="small" style="padding-left:28px;margin:0;display:flex;flex-direction:column;gap:14px">
     <li>NVIDIA Isaac Sim 6.1 and Isaac Lab 3.0, including the Spot robot asset and its pretrained locomotion policy</li>
     <li>FLUX 3 Action © Black Forest Labs, used under the FLUX Kommunity License</li>
+    <li>NVIDIA GR00T N1.7 (Isaac-GR00T); rollout media non-commercial, see <a class="xl" href="MEDIA-LICENSE.md">MEDIA-LICENSE</a></li>
+    <li>Gemma 4 12B and Qwen 3.8 27B as local checkers; QLoRA fine-tune with Unsloth</li>
     <li>DROID robot manipulation dataset (CC BY 4.0)</li>
     <li>SO-101 open-hardware arm and the LeRobot project</li>
   </ul>
